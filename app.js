@@ -82,15 +82,39 @@ renderCabinet();
 //    진짜 약 성분/용법/상호작용 위험 정보를 받아오는 함수입니다.
 // ──────────────────────────────────────────────────────────
 async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
-    // 무료 한도가 있는 순서대로 모델을 시도합니다.
-    // gemini-1.5-flash → gemini-1.5-flash-8b → gemini-1.0-pro 순서로 자동 폴백
-    const MODELS = [
-        'gemini-1.5-flash',
-        'gemini-1.5-flash-8b',
-        'gemini-1.5-flash-latest',
-    ];
-
     const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+    // 이 API 키로 실제 사용 가능한 모델 목록을 자동 조회합니다.
+    // 모델을 하드코딩하지 않고 API 키마다 지원 모델이 다를 수 있으므로
+    // 실제로 사용할 수 있는 모델을 동적으로 가져옵니다.
+    let MODELS = [];
+    try {
+        const listRes = await fetch(`${BASE_URL}?key=${GEMINI_API_KEY}`);
+        if (listRes.ok) {
+            const listData = await listRes.json();
+            // generateContent를 지원하며 이름에 'gemini'가 포함된 모델만 필터링
+            MODELS = (listData.models || [])
+                .filter(m =>
+                    m.supportedGenerationMethods?.includes('generateContent') &&
+                    m.name.includes('gemini')
+                )
+                .map(m => m.name.replace('models/', ''))
+                // flash 계열 먼저, pro 계열 나중에 정렬
+                .sort((a, b) => {
+                    const aFlash = a.includes('flash') ? 0 : 1;
+                    const bFlash = b.includes('flash') ? 0 : 1;
+                    return aFlash - bFlash;
+                });
+        }
+    } catch (e) {
+        console.warn('모델 목록 조회 실패, 기본 모델 목록 사용');
+    }
+
+    // 조회 실패 시 폴백 기본 목록
+    if (MODELS.length === 0) {
+        MODELS = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-pro'];
+    }
+    console.log('[사용 가능한 모델]', MODELS);
 
     // 보관함 선택 약물 목록을 텍스트로 구성
     const cabinetText = cabinetItems.length > 0
@@ -167,9 +191,15 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
             if (!response.ok) {
                 const errData = await response.json();
                 const errMsg = errData.error?.message || '';
-                // 할당량 초과(429) 또는 quota 오류 시 다음 모델로 자동 전환
-                if (response.status === 429 || errMsg.includes('quota') || errMsg.includes('Quota')) {
-                    console.warn(`[모델 전환] ${model} 한도 초과 → 다음 모델 시도 중...`);
+                // quota 초과, 모델 없음, 권한 없음 오류 시 다음 모델로 자동 전환
+                const isSkippable = 
+                    response.status === 429 ||
+                    errMsg.toLowerCase().includes('quota') ||
+                    errMsg.toLowerCase().includes('not found') ||
+                    errMsg.toLowerCase().includes('not supported') ||
+                    errMsg.toLowerCase().includes('permission');
+                if (isSkippable) {
+                    console.warn(`[모델 전환] ${model} 사용 불가 → 다음 모델 시도 중...`, errMsg.substring(0, 80));
                     lastError = new Error(`${model}: ${errMsg}`);
                     continue; // 다음 모델로 이동
                 }
@@ -182,7 +212,8 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
             return JSON.parse(cleanedText);
 
         } catch (err) {
-            if (err.message?.includes('quota') || err.message?.includes('Quota')) {
+            const msg = err.message?.toLowerCase() || '';
+            if (msg.includes('quota') || msg.includes('not found') || msg.includes('not supported')) {
                 lastError = err;
                 continue; // 다음 모델로 이동
             }
@@ -191,7 +222,8 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
     }
 
     // 모든 모델 시도 실패 시
-    throw new Error('모든 Gemini 모델의 무료 사용 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.\n\n💡 팁: Google AI Studio에서 유료 플랜을 사용하거나, 몇 분 후 다시 시도해보세요.');
+    const lastMsg = lastError?.message || '알 수 없는 오류';
+    throw new Error(`사용 가능한 Gemini 모델을 찾지 못했습니다.\n\n상세 오류: ${lastMsg.substring(0, 120)}\n\n💡 확인사항:\n1. API 키가 올바른지 다시 확인해주세요.\n2. Google AI Studio(aistudio.google.com)에서 API 키 상태를 확인해주세요.\n3. 잠시 후 다시 시도해주세요.`);
 }
 
 // ──────────────────────────────────────────────────────────
