@@ -768,7 +768,7 @@ code {
     transform: translateY(-1px);
 }
 
-/* 모달 오버레이 스타일 */
+/* 모달 오버레이 스타일 (사용하지 않을 때 화면 클릭을 절대 차단하지 않도록 pointer-events: none 처리) */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -777,11 +777,17 @@ code {
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(8px);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    pointer-events: none;
     animation: fadeIn 0.25s ease-out;
+}
+
+.modal-overlay:not(.hidden) {
+    display: flex !important;
+    pointer-events: auto !important;
 }
 
 @keyframes fadeIn {
