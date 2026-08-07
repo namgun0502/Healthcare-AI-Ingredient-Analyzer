@@ -389,11 +389,40 @@ clearCabinetBtn.addEventListener('click', () => {
 });
 
 // ──────────────────────────────────────────────────────────
-//  5-1. 약물 보관함 관리 모달 (Supabase 전용 관리 탭)
+//  5-1. 상단 탭 (챗봇 vs 약물 보관함 관리) 화면 전환 로직
 // ──────────────────────────────────────────────────────────
-const openManageModalBtn  = document.getElementById('open-manage-modal-btn');
-const closeManageModalBtn = document.getElementById('close-manage-modal-btn');
-const manageModal         = document.getElementById('manage-modal');
+const tabBtnChat    = document.getElementById('tab-btn-chat');
+const tabBtnCabinet = document.getElementById('tab-btn-cabinet');
+
+const viewChatbot       = document.getElementById('view-chatbot');
+const viewCabinetManage = document.getElementById('view-cabinet-manage');
+
+// 챗봇 탭 클릭 시
+tabBtnChat?.addEventListener('click', () => {
+    tabBtnChat.classList.add('active');
+    tabBtnCabinet.classList.remove('active');
+
+    viewChatbot.classList.remove('hidden-view');
+    viewChatbot.classList.add('active-view');
+
+    viewCabinetManage.classList.add('hidden-view');
+    viewCabinetManage.classList.remove('active-view');
+});
+
+// 약물 보관함 관리 탭 클릭 시 (화면 전환!)
+tabBtnCabinet?.addEventListener('click', () => {
+    tabBtnCabinet.classList.add('active');
+    tabBtnChat.classList.remove('active');
+
+    viewCabinetManage.classList.remove('hidden-view');
+    viewCabinetManage.classList.add('active-view');
+
+    viewChatbot.classList.add('hidden-view');
+    viewChatbot.classList.remove('active-view');
+
+    // Supabase 최신 데이터 불러오기
+    fetchMedicinesFromSupabase();
+});
 
 const newMedNameInput        = document.getElementById('new-med-name');
 const newMedTypeSelect       = document.getElementById('new-med-type');
@@ -403,16 +432,6 @@ const addMedDbBtn            = document.getElementById('add-med-db-btn');
 const dbMedListEl  = document.getElementById('db-med-list');
 const dbMedCountEl = document.getElementById('db-med-count');
 const refreshDbBtn = document.getElementById('refresh-db-btn');
-
-// 모달 열기/닫기
-openManageModalBtn?.addEventListener('click', () => {
-    manageModal.classList.remove('hidden');
-    fetchMedicinesFromSupabase();
-});
-
-closeManageModalBtn?.addEventListener('click', () => {
-    manageModal.classList.add('hidden');
-});
 
 refreshDbBtn?.addEventListener('click', fetchMedicinesFromSupabase);
 

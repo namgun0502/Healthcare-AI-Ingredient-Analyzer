@@ -28,17 +28,24 @@
                 <span class="brand-title">Healthcare AI Assistant</span>
                 <span class="version-tag">Gemini 1.5 Flash</span>
             </div>
+
+            <!-- 🎯 메인 상단 탭 전환 메뉴 -->
+            <nav class="nav-tabs">
+                <button id="tab-btn-chat" class="nav-tab-btn active">💬 AI 챗봇 대화</button>
+                <button id="tab-btn-cabinet" class="nav-tab-btn">💊 약물 보관함 관리</button>
+            </nav>
+
             <div class="nav-actions">
-                <button id="open-manage-modal-btn" class="manage-tab-btn">💊 약물 보관함 관리</button>
                 <span id="ai-status" class="status-indicator"><span class="dot dot-gray"></span> API 키 미설정</span>
             </div>
         </header>
 
-        <!-- 메인 2-Pane 워크스페이스 -->
-        <div class="studio-workspace">
-            
-            <!-- 좌측: AI 대화 인터페이스 (Chat Area) -->
-            <main class="chat-pane">
+        <!-- 1️⃣ 탭 뷰 A: AI 챗봇 대화 메인 화면 -->
+        <div id="view-chatbot" class="tab-view active-view">
+            <div class="studio-workspace">
+                
+                <!-- 좌측: AI 대화 인터페이스 (Chat Area) -->
+                <main class="chat-pane">
                 <div id="chat-history" class="chat-history">
                     
                     <!-- AI 첫 인쇄 안내 메시지 카드 -->
@@ -143,53 +150,59 @@
 
             </aside>
 
-        </div>
-    </div>
-
-    <!-- ⚡ Supabase 약물 보관함 관리 탭 (모달 레이아웃) -->
-    <div id="manage-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>💊 Supabase 약물 보관함 데이터 관리</h2>
-                <button id="close-manage-modal-btn" class="close-modal-btn">✕</button>
-            </div>
-            
-            <div class="modal-body">
-                <!-- 1. Supabase 연동 상태 표시 카드 -->
-                <div class="modal-card">
-                    <div class="card-title">
-                        <span>⚡ Supabase DB 실시간 연결 상태</span>
-                        <span id="supabase-status-badge" class="api-status-tag tag-set">연결 완료 ✅</span>
-                    </div>
-                    <p class="cabinet-help">남건의 Supabase 클라우드 데이터베이스에 실시간으로 데이터가 저장됩니다.</p>
-                </div>
-
-                <!-- 2. 신규 약물 DB에 추가하기 폼 -->
-                <div class="modal-card">
-                    <h3>➕ 보관함에 새 약물/영양제 직접 추가</h3>
-                    <div class="add-medicine-form">
-                        <input type="text" id="new-med-name" class="form-control" placeholder="약물 또는 영양제 이름 (예: 우루사 100mg)">
-                        <select id="new-med-type" class="form-control-select">
-                            <option value="의약품">의약품</option>
-                            <option value="건강기능식품">건강기능식품 (영양제)</option>
-                        </select>
-                        <input type="text" id="new-med-ingredients" class="form-control" placeholder="주요 성분 (예: UDCA 100mg, 비타민B1)">
-                        <button id="add-med-db-btn" class="save-api-btn">데이터베이스에 추가 💾</button>
-                    </div>
-                </div>
-
-                <!-- 3. Supabase DB 약물 목록 & 삭제 관리 -->
-                <div class="modal-card">
-                    <div class="card-title">
-                        <span>📋 데이터베이스 전체 약물 목록 (<span id="db-med-count">0</span>개)</span>
-                        <button id="refresh-db-btn" class="secondary-btn">🔄 새로고침</button>
-                    </div>
-                    <div id="db-med-list" class="db-med-list">
-                        <!-- JS에서 동적 렌더링 -->
-                    </div>
-                </div>
             </div>
         </div>
+
+        <!-- 2️⃣ 탭 뷰 B: 약물 보관함 전용 관리 화면 (화면 전환) -->
+        <div id="view-cabinet-manage" class="tab-view hidden-view">
+            <div class="cabinet-manage-container">
+                
+                <div class="manage-page-header">
+                    <h2>💊 약물 보관함 전용 관리 센터</h2>
+                    <p>Supabase 클라우드 데이터베이스와 연결되어 보관함 약물을 추가, 조회, 삭제합니다.</p>
+                </div>
+
+                <div class="manage-grid">
+                    <!-- 1. Supabase 연결 상태 카드 -->
+                    <div class="manage-card">
+                        <div class="card-title">
+                            <span>⚡ Supabase DB 실시간 연결 상태</span>
+                            <span id="supabase-status-badge" class="api-status-tag tag-set">연결 완료 ✅</span>
+                        </div>
+                        <p class="cabinet-help">남건의 Supabase 클라우드 데이터베이스에 약물 데이터가 실시간 저장됩니다.</p>
+                    </div>
+
+                    <!-- 2. 신규 약물 DB 추가 폼 -->
+                    <div class="manage-card">
+                        <h3>➕ 보관함에 새 약물/영양제 직접 등록</h3>
+                        <div class="add-medicine-form">
+                            <div class="form-row">
+                                <input type="text" id="new-med-name" class="form-control" placeholder="약물 또는 영양제 이름 (예: 우루사 100mg)">
+                                <select id="new-med-type" class="form-control-select">
+                                    <option value="의약품">의약품</option>
+                                    <option value="건강기능식품">건강기능식품 (영양제)</option>
+                                </select>
+                            </div>
+                            <input type="text" id="new-med-ingredients" class="form-control" placeholder="주요 성분 (예: UDCA 100mg, 비타민B1)">
+                            <button id="add-med-db-btn" class="save-api-btn-large">데이터베이스에 새 약물 등록 💾</button>
+                        </div>
+                    </div>
+
+                    <!-- 3. Supabase DB 저장 전체 약물 관리 목록 -->
+                    <div class="manage-card full-width">
+                        <div class="card-title">
+                            <span>📋 Supabase DB 전체 보관함 목록 (<span id="db-med-count">0</span>개)</span>
+                            <button id="refresh-db-btn" class="secondary-btn">🔄 새로고침</button>
+                        </div>
+                        <div id="db-med-list" class="db-med-list">
+                            <!-- JS에서 동적 렌더링 -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
     <script src="app.js"></script>
