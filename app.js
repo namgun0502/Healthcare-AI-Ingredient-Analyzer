@@ -16,6 +16,7 @@ const loginBtnText       = document.getElementById('login-btn-text');
 
 // 회원가입 폼 요소들
 const registerForm           = document.getElementById('register-form');
+const regNickname            = document.getElementById('reg-nickname');
 const regEmail               = document.getElementById('reg-email');
 const regPassword            = document.getElementById('reg-password');
 const regPasswordConfirm     = document.getElementById('reg-password-confirm');
@@ -115,23 +116,44 @@ function showAuthSuccess(msg) {
 }
 
 // 로그인 성공 후 메인 앱 화면으로 전환
-function showMainApp(user) {
+async function showMainApp(user) {
     currentUser = user;
     authScreen.classList.add('hidden');   // 로그인 화면 숨기기
     mainApp.classList.remove('hidden');   // 메인 앱 보이기
 
-    // 상단에 현재 이메일 표시
+    let userNickname = '사용자';
+
+    // Supabase profiles 테이블에서 사용자 닉네임 불러오기
+    if (supabaseClient && user) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('nickname')
+                .eq('id', user.id)
+                .single();
+
+            if (data && data.nickname) {
+                userNickname = data.nickname;
+            } else if (user.user_metadata && user.user_metadata.nickname) {
+                userNickname = user.user_metadata.nickname;
+            }
+        } catch (e) {
+            console.warn('프로필 닉네임 조회 실패:', e);
+        }
+    }
+
+    // 상단에 현재 닉네임과 이메일 표시
     if (userEmailDisplay) {
-        userEmailDisplay.textContent = `👤 ${user.email}`;
+        userEmailDisplay.textContent = `👤 ${userNickname} (${user.email})`;
     }
 
     // 보관함 정보 업데이트
-const supabaseUserInfo = document.getElementById('supabase-user-info');
+    const supabaseUserInfo = document.getElementById('supabase-user-info');
     if (supabaseUserInfo) {
-        supabaseUserInfo.textContent = `${user.email} 계정의 약물 데이터가 Supabase에 실시간 저장됩니다.`;
+        supabaseUserInfo.textContent = `${userNickname}님(${user.email}) 계정의 약물 데이터가 Supabase에 실시간 저장됩니다.`;
     }
 
-    console.log('✅ 로그인 완료:', user.email);
+    console.log('✅ 로그인 완료:', userNickname, user.email);
     // 로그인한 사람의 약물 보관함 데이터 불러오기
     fetchMedicinesFromSupabase();
 }
@@ -182,12 +204,13 @@ registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearAuthMessages();
 
+    const nickname = regNickname ? regNickname.value.trim() : '사용자';
     const email    = regEmail.value.trim();
     const password = regPassword.value;
     const confirm  = regPasswordConfirm.value;
 
     // 입력값 검증
-    if (!email || !password || !confirm) {
+    if (!nickname || !email || !password || !confirm) {
         showAuthError('모든 항목을 입력해주세요.');
         return;
     }
@@ -207,7 +230,7 @@ registerForm?.addEventListener('submit', async (e) => {
             email,
             password,
             options: {
-                // 이메일 인증 없이 바로 가입 완료 처리
+                data: { nickname: nickname },
                 emailRedirectTo: window.location.href
             }
         });
@@ -219,12 +242,21 @@ registerForm?.addEventListener('submit', async (e) => {
                 showAuthError(`❌ 회원가입 오류: ${error.message}`);
             }
         } else if (data.user) {
-            // 이메일 인증이 비활성화된 경우 바로 로그인됨
+            // profiles 테이블에 닉네임 및 사용자 정보 저장
+            try {
+                await supabaseClient.from('profiles').insert([{
+                    id: data.user.id,
+                    email: email,
+                    nickname: nickname
+                }]);
+            } catch (pErr) {
+                console.warn('프로필 저장 중 오류 (테이블 미생성 시):', pErr);
+            }
+
             if (data.session) {
-                showMainApp(data.user);
+                await showMainApp(data.user);
             } else {
-                showAuthSuccess('✅ 회원가입 완료! 이메일 인증 없이 바로 로그인하세요.');
-                // 로그인 탭으로 전환
+                showAuthSuccess('✅ 회원가입 완료! 바로 로그인하세요.');
                 authTabLogin.click();
                 loginEmail.value = email;
             }
@@ -801,7 +833,24 @@ removeImgBtn?.addEventListener('click', () => {
 //  7. 전역 버튼 클릭 이벤트 (모든 버튼 클릭 동작 100% 활성화 보장)
 // ──────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
-    // 1) 칩 버튼 클릭시
+    // 1) 비밀번호 보기/숨기기(👁️) 토글 버튼 클릭 시
+    const pwToggleBtn = e.target.closest('.pw-toggle-btn');
+    if (pwToggleBtn) {
+        const targetId = pwToggleBtn.getAttribute('data-target');
+        const inputEl = document.getElementById(targetId);
+        if (inputEl) {
+            if (inputEl.type === 'password') {
+                inputEl.type = 'text';
+                pwToggleBtn.textContent = '🙈'; // 보이는 상태일 때 아이콘 변경
+            } else {
+                inputEl.type = 'password';
+                pwToggleBtn.textContent = '👁️'; // 숨겨진 상태일 때 아이콘 변경
+            }
+        }
+        return;
+    }
+
+    // 2) 칩 버튼 클릭 시
     const chipBtn = e.target.closest('.chip-btn');
     if (chipBtn) {
         const query = chipBtn.getAttribute('data-query');

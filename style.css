@@ -1077,6 +1077,36 @@ code {
     outline: none;
 }
 
+.pw-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.pw-input-wrapper .auth-input {
+    width: 100%;
+    padding-right: 2.8rem;
+}
+
+.pw-toggle-btn {
+    position: absolute;
+    right: 0.6rem;
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    transition: transform 0.15s, opacity 0.15s;
+    user-select: none;
+    opacity: 0.7;
+}
+
+.pw-toggle-btn:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
 .auth-input:focus {
     border-color: var(--accent-blue);
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);

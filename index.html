@@ -51,7 +51,10 @@
                 </div>
                 <div class="auth-input-group">
                     <label class="auth-label">🔒 비밀번호</label>
-                    <input type="password" id="login-password" class="auth-input" placeholder="비밀번호 입력" required>
+                    <div class="pw-input-wrapper">
+                        <input type="password" id="login-password" class="auth-input" placeholder="비밀번호 입력" required>
+                        <button type="button" class="pw-toggle-btn" data-target="login-password" title="비밀번호 표시/숨기기">👁️</button>
+                    </div>
                 </div>
                 <button type="submit" id="login-btn" class="auth-submit-btn">
                     <span id="login-btn-text">로그인 →</span>
@@ -61,16 +64,26 @@
             <!-- 회원가입 폼 (평소에는 숨김) -->
             <form id="register-form" class="auth-form hidden">
                 <div class="auth-input-group">
+                    <label class="auth-label">👤 닉네임</label>
+                    <input type="text" id="reg-nickname" class="auth-input" placeholder="예: 남건" required>
+                </div>
+                <div class="auth-input-group">
                     <label class="auth-label">📧 이메일</label>
                     <input type="email" id="reg-email" class="auth-input" placeholder="example@email.com" required>
                 </div>
                 <div class="auth-input-group">
                     <label class="auth-label">🔒 비밀번호 (6자 이상)</label>
-                    <input type="password" id="reg-password" class="auth-input" placeholder="6자 이상 입력" required minlength="6">
+                    <div class="pw-input-wrapper">
+                        <input type="password" id="reg-password" class="auth-input" placeholder="6자 이상 입력" required minlength="6">
+                        <button type="button" class="pw-toggle-btn" data-target="reg-password" title="비밀번호 표시/숨기기">👁️</button>
+                    </div>
                 </div>
                 <div class="auth-input-group">
                     <label class="auth-label">🔒 비밀번호 확인</label>
-                    <input type="password" id="reg-password-confirm" class="auth-input" placeholder="비밀번호 재입력" required>
+                    <div class="pw-input-wrapper">
+                        <input type="password" id="reg-password-confirm" class="auth-input" placeholder="비밀번호 재입력" required>
+                        <button type="button" class="pw-toggle-btn" data-target="reg-password-confirm" title="비밀번호 표시/숨기기">👁️</button>
+                    </div>
                 </div>
                 <button type="submit" id="register-btn" class="auth-submit-btn">
                     <span id="register-btn-text">회원가입 →</span>
