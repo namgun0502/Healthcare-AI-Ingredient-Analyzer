@@ -140,21 +140,33 @@ async function showMainApp(user) {
 
     let userNickname = '';
 
+    // Supabase profiles 테이블에서 사용자 닉네임 및 계정별 API 키 불러오기
     if (supabaseClient && user) {
         try {
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('nickname')
+                .select('nickname, gemini_api_key')
                 .eq('id', user.id)
                 .single();
 
-            if (data && data.nickname && data.nickname.trim() !== '') {
-                userNickname = data.nickname.trim();
-            } else if (user.user_metadata && user.user_metadata.nickname && user.user_metadata.nickname.trim() !== '') {
-                userNickname = user.user_metadata.nickname.trim();
+            if (data) {
+                if (data.nickname && data.nickname.trim() !== '') {
+                    userNickname = data.nickname.trim();
+                } else if (user.user_metadata && user.user_metadata.nickname && user.user_metadata.nickname.trim() !== '') {
+                    userNickname = user.user_metadata.nickname.trim();
+                }
+
+                // 🔑 계정에 저장된 Gemini API 키가 있는 경우 자동 로드 및 활성화
+                if (data.gemini_api_key && data.gemini_api_key.trim() !== '') {
+                    GEMINI_API_KEY = data.gemini_api_key.trim();
+                    localStorage.setItem('gemini_api_key', GEMINI_API_KEY);
+                    if (apiKeyInput) apiKeyInput.value = GEMINI_API_KEY;
+                    updateApiKeyStatus(true);
+                    console.log('🔑 계정(Supabase DB)에서 Gemini API 키 자동 동기화 완료!');
+                }
             }
         } catch (e) {
-            console.warn('프로필 닉네임 조회 실패:', e);
+            console.warn('프로필 정보 조회 실패:', e);
         }
     }
 
@@ -552,16 +564,16 @@ async function checkExistingSession() {
 checkExistingSession();
 
 // ──────────────────────────────────────────────────────────
-//  2. Gemini API 키 상태 관리
+//  2. Gemini API 키 상태 관리 및 계정 DB(Supabase) 동기화
 // ──────────────────────────────────────────────────────────
 let GEMINI_API_KEY = localStorage.getItem('gemini_api_key') || '';
 
 if (GEMINI_API_KEY) {
     updateApiKeyStatus(true);
-    apiKeyInput.value = GEMINI_API_KEY;
+    if (apiKeyInput) apiKeyInput.value = GEMINI_API_KEY;
 }
 
-saveApiKeyBtn?.addEventListener('click', () => {
+saveApiKeyBtn?.addEventListener('click', async () => {
     const key = apiKeyInput ? apiKeyInput.value.trim() : '';
     if (key.length < 6) {
         alert('API 키가 너무 짧습니다. 올바른 Gemini API 키를 입력해주세요.');
@@ -570,7 +582,31 @@ saveApiKeyBtn?.addEventListener('click', () => {
     GEMINI_API_KEY = key;
     localStorage.setItem('gemini_api_key', key);
     updateApiKeyStatus(true);
-    alert('✅ API 키가 성공적으로 저장되었습니다! 이제 실제 Gemini AI가 약 성분을 분석해 드립니다.');
+
+    // 🔑 계정별 Supabase DB (profiles 테이블)에 Gemini API 키 즉시 연동 저장
+    if (supabaseClient && currentUser) {
+        try {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .upsert({
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    nickname: currentNickname,
+                    gemini_api_key: key,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.warn('Supabase DB API 키 저장 실패:', error.message);
+            } else {
+                console.log('✅ Supabase 계정 DB에 Gemini API 키 연동 완료!');
+            }
+        } catch (e) {
+            console.error('API 키 DB 저장 오류:', e);
+        }
+    }
+
+    alert('✅ API 키가 내 계정(Supabase DB)에 성공적으로 저장되었습니다!\n어디서 로그인하든 내 계정의 API 키가 자동 동기화됩니다.');
 });
 
 function updateApiKeyStatus(isSet) {
@@ -1000,7 +1036,6 @@ removeImgBtn?.addEventListener('click', () => {
     imagePreviewContainer?.classList.add('hidden');
 });
 
-// 🖱️ 챗봇 질문창 영역 이미지 파일 Drag & Drop 자동 등록
 const inputBoxWrapper = document.querySelector('.input-box-wrapper');
 
 if (inputBoxWrapper) {
@@ -1367,4 +1402,4 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
-console.log('✅ 실제 Gemini AI 연동 어시스턴트 및 드래그 앤 드롭 사진 업로드 준비 완료');
+console.log('✅ 계정별 Gemini API 키 Supabase DB 연동 및 동기화 준비 완료');
