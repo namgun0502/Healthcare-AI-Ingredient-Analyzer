@@ -245,6 +245,33 @@ logoutBtn?.addEventListener('click', async () => {
     cabinet = []; // 보관함 데이터 초기화
     renderCabinet();
 
+    // 🧹 대화 내역(Chat History) 초기화 및 첫 안내 말풍선만 남기기
+    if (chatHistory) {
+        chatHistory.innerHTML = `
+            <div class="message-bubble ai-bubble">
+                <div class="avatar">✨</div>
+                <div class="bubble-content">
+                    <h3>안녕하세요! 실제 약 성분 AI 분석 어시스턴트입니다. 💊</h3>
+                    <p>타이레놀, 우루사, 게보린, 오메가3 같은 <strong>실제 약/영양제 이름</strong>을 입력하시면 Gemini AI가 진짜 성분, 효능, 상호작용 위험을 실시간으로 분석해 드립니다!</p>
+                    <p style="margin-top: 0.4rem; color: #38bdf8;">💡 우측 패널에 <strong>Gemini API 키</strong>를 등록하면 실제 AI가 응답합니다. 분석 후 [보관함에 저장]하면 다음에도 자동 대조 분석이 가능합니다.</p>
+                    
+                    <div class="sample-chips">
+                        <span class="chip-label">💊 실제 약/영양제 이름으로 바로 질문해보기:</span>
+                        <button class="chip-btn" data-query="타이레놀 500mg 성분과 복용법을 알려주고, 내 보관함 약물들과 함께 먹어도 되는지 대조 분석해줘">💊 타이레놀</button>
+                        <button class="chip-btn" data-query="우루사 성분과 효능을 알려주고 보관함 약들과의 상호작용을 분석해줘">🟡 우루사</button>
+                        <button class="chip-btn" data-query="게보린 성분과 주의사항, 보관함 약들과의 중복 위험을 분석해줘">💊 게보린</button>
+                        <button class="chip-btn" data-query="임팩타민 성분과 하루 권장 섭취량, 보관함 약물들과의 상호작용 위험을 알려줘">🔶 임팩타민</button>
+                        <button class="chip-btn" data-query="오메가3 주요 성분과 효능, 보관함에 있는 약들과 같이 먹어도 되는지 분석해줘">🐟 오메가3</button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // 🧹 JSON 구조 패널도 초기 상태로 리셋
+    if (jsonOutput) {
+        jsonOutput.textContent = `{\n  "status": "ready",\n  "message": "API 키를 설정하고 약품명을 입력하면 진짜 AI가 분석합니다."\n}`;
+    }
+
     // 메인 앱 숨기고 로그인 화면 표시
     mainApp.classList.add('hidden');
     authScreen.classList.remove('hidden');
@@ -255,7 +282,7 @@ logoutBtn?.addEventListener('click', async () => {
     if (loginPassword) loginPassword.value = '';
     authTabLogin?.click();
 
-    console.log('🚪 로그아웃 완료');
+    console.log('🚪 로그아웃 완료 및 대화 내역 초기화 완료');
 });
 
 // 🔄 앱 시작 시: 이미 로그인된 세션이 있으면 바로 메인 앱으로
