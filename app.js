@@ -52,8 +52,8 @@ if (GEMINI_API_KEY) {
 }
 
 // API 키 저장 버튼 클릭 이벤트
-saveApiKeyBtn.addEventListener('click', () => {
-    const key = apiKeyInput.value.trim();
+saveApiKeyBtn?.addEventListener('click', () => {
+    const key = apiKeyInput ? apiKeyInput.value.trim() : '';
     // API 키 최소 길이만 확인 (형식 제한 없음 - 다양한 형태의 키 허용)
     if (key.length < 6) {
         alert('API 키가 너무 짧습니다. 올바른 Gemini API 키를 입력해주세요.');
@@ -500,43 +500,46 @@ fetchMedicinesFromSupabase();
 // ──────────────────────────────────────────────────────────
 //  6. 사진 첨부 기능
 // ──────────────────────────────────────────────────────────
-photoUploadBtn.addEventListener('click', () => imageUploadInput.click());
+photoUploadBtn?.addEventListener('click', () => imageUploadInput?.click());
 
-imageUploadInput.addEventListener('change', (e) => {
+imageUploadInput?.addEventListener('change', (e) => {
     if (e.target.files?.[0]) {
         selectedImageFile = e.target.files[0];
-        previewFilename.textContent = selectedImageFile.name;
-        imagePreviewContainer.classList.remove('hidden');
+        if (previewFilename) previewFilename.textContent = selectedImageFile.name;
+        imagePreviewContainer?.classList.remove('hidden');
         if (!chatInput.value.trim()) {
             chatInput.value = `이 약/영양제 사진의 성분과 복용법을 분석하고, 내 보관함 약물들과의 상호작용 위험을 알려줘.`;
         }
     }
 });
 
-removeImgBtn.addEventListener('click', () => {
+removeImgBtn?.addEventListener('click', () => {
     selectedImageFile = null;
-    imageUploadInput.value = '';
-    imagePreviewContainer.classList.add('hidden');
+    if (imageUploadInput) imageUploadInput.value = '';
+    imagePreviewContainer?.classList.add('hidden');
 });
 
 // ──────────────────────────────────────────────────────────
-//  7. 실제 약품명 칩 클릭 이벤트 (data-query 속성 기반)
+//  7. 전역 버튼 클릭 이벤트 (모든 버튼 클릭 동작 100% 활성화 보장)
 // ──────────────────────────────────────────────────────────
-document.querySelectorAll('.chip-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const query = btn.getAttribute('data-query');
-        if (query) {
+document.addEventListener('click', (e) => {
+    // 1) 칩 버튼 클릭시
+    const chipBtn = e.target.closest('.chip-btn');
+    if (chipBtn) {
+        const query = chipBtn.getAttribute('data-query');
+        if (query && chatInput) {
             chatInput.value = query;
             handleSendMessage();
         }
-    });
+        return;
+    }
 });
 
 // ──────────────────────────────────────────────────────────
 //  8. 메시지 전송 핸들러 (AI 분석 실행 핵심)
 // ──────────────────────────────────────────────────────────
-sendBtn.addEventListener('click', handleSendMessage);
-chatInput.addEventListener('keydown', (e) => {
+sendBtn?.addEventListener('click', handleSendMessage);
+chatInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
 });
 
