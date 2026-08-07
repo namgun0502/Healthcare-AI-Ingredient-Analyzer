@@ -924,3 +924,235 @@ code {
     font-size: 0.78rem;
     color: #8b949e;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   🔐 로그인 / 회원가입 화면 스타일
+   처음 앱에 접속했을 때 보이는 화면입니다.
+═══════════════════════════════════════════════════════════ */
+
+/* 로그인 화면 전체 배경 */
+.auth-screen {
+    min-height: 100vh;
+    background: var(--bg-main);
+    background-image:
+        radial-gradient(ellipse at 20% 30%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-family);
+}
+
+/* 로그인 카드 박스 */
+.auth-card {
+    background: var(--pane-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(56, 189, 248, 0.1);
+    animation: authFadeIn 0.4s ease;
+}
+
+@keyframes authFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 로고 & 타이틀 영역 */
+.auth-logo {
+    text-align: center;
+    margin-bottom: 1.8rem;
+}
+
+.auth-sparkle {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 0.6rem;
+    filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.6));
+}
+
+.auth-title {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 0.3rem;
+    background: linear-gradient(135deg, #f0f6fc 0%, #38bdf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.auth-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+/* 탭 전환 버튼 (로그인 / 회원가입) */
+.auth-tabs {
+    display: flex;
+    gap: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.auth-tab-btn {
+    flex: 1;
+    padding: 0.55rem 1rem;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-family);
+}
+
+.auth-tab-btn.active {
+    background: var(--accent-blue);
+    color: #0d1117;
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+}
+
+/* 오류 / 성공 메시지 박스 */
+.auth-error-box {
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.4);
+    color: #fca5a5;
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 0.83rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+.auth-success-box {
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    color: #6ee7b7;
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 0.83rem;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+}
+
+/* 로그인 폼 */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.auth-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.auth-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+
+.auth-input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-family: var(--font-family);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.auth-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.auth-input::placeholder {
+    color: #4b5563;
+}
+
+/* 제출 버튼 */
+.auth-submit-btn {
+    margin-top: 0.4rem;
+    padding: 0.8rem;
+    background: linear-gradient(135deg, #38bdf8, #7c3aed);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: opacity 0.2s, transform 0.15s;
+    letter-spacing: 0.03em;
+}
+
+.auth-submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.auth-submit-btn:active { transform: translateY(0); }
+.auth-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 하단 안내 문구 */
+.auth-footer-note {
+    margin-top: 1.2rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   상단 내비게이션: 사용자 이메일 배지 + 로그아웃 버튼
+═══════════════════════════════════════════════════════════ */
+
+.user-email-badge {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.25rem 0.7rem;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-btn {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: #f87171;
+    border-radius: 8px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--font-family);
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(248, 113, 113, 0.2);
+    border-color: #f87171;
+    color: #fca5a5;
+}
+
+/* 숨김 유틸리티 */
+.hidden { display: none !important; }

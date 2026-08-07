@@ -4,6 +4,36 @@
 // ──────────────────────────────────────────────────────────
 //  1. DOM 요소 가져오기
 // ──────────────────────────────────────────────────────────
+// 로그인/메인 화면 전환용 요소
+const authScreen  = document.getElementById('auth-screen');
+const mainApp     = document.getElementById('main-app');
+
+// 로그인 폼 요소들
+const loginForm          = document.getElementById('login-form');
+const loginEmail         = document.getElementById('login-email');
+const loginPassword      = document.getElementById('login-password');
+const loginBtnText       = document.getElementById('login-btn-text');
+
+// 회원가입 폼 요소들
+const registerForm           = document.getElementById('register-form');
+const regEmail               = document.getElementById('reg-email');
+const regPassword            = document.getElementById('reg-password');
+const regPasswordConfirm     = document.getElementById('reg-password-confirm');
+const registerBtnText        = document.getElementById('register-btn-text');
+
+// Auth 탭 전환 버튼
+const authTabLogin    = document.getElementById('auth-tab-login');
+const authTabRegister = document.getElementById('auth-tab-register');
+
+// Auth 메시지 박스
+const authErrorBox   = document.getElementById('auth-error-box');
+const authSuccessBox = document.getElementById('auth-success-box');
+
+// 로그아웃 버튼, 사용자 이메일 표시
+const logoutBtn         = document.getElementById('logout-btn');
+const userEmailDisplay  = document.getElementById('user-email-display');
+
+// 채팅 관련 요소들
 const chatHistory     = document.getElementById('chat-history');
 const chatInput       = document.getElementById('chat-input');
 const sendBtn         = document.getElementById('send-btn');
@@ -27,17 +57,230 @@ const apiKeyStatusEl = document.getElementById('api-key-status');
 const aiStatusEl     = document.getElementById('ai-status');
 
 // ──────────────────────────────────────────────────────────
-//  1-1. Supabase 데이터베이스 클라이언트 초기화
+//  1-1. Supabase 데이터베이스 & Auth 클라이언트 초기화
 // ──────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://qzhgsshyhmnczmreagqd.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6aGdzc2h5aG1uY3ptcmVhZ3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNzc0NzksImV4cCI6MjA5Nzg1MzQ3OX0.2NZxyClmIpj7WtUuZtexZqAMuTnC7udF5FejwitzvcU";
 
-// window.supabase SDK 사용
 let supabaseClient = null;
 if (window.supabase) {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('✅ Supabase DB 클라이언트 연결 성공!');
+    console.log('✅ Supabase DB + Auth 클라이언트 연결 성공!');
 }
+
+// 현재 로그인된 사용자 정보를 저장하는 변수
+let currentUser = null;
+
+// ──────────────────────────────────────────────────────────
+//  1-2. 🔐 Supabase Auth — 로그인/회원가입/로그아웃 로직
+// ──────────────────────────────────────────────────────────
+
+// [로그인 탭] ↔ [회원가입 탭] 전환
+authTabLogin?.addEventListener('click', () => {
+    authTabLogin.classList.add('active');
+    authTabRegister.classList.remove('active');
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+    clearAuthMessages();
+});
+
+authTabRegister?.addEventListener('click', () => {
+    authTabRegister.classList.add('active');
+    authTabLogin.classList.remove('active');
+    registerForm.classList.remove('hidden');
+    loginForm.classList.add('hidden');
+    clearAuthMessages();
+});
+
+// Auth 메시지 박스 초기화 함수
+function clearAuthMessages() {
+    authErrorBox.classList.add('hidden');
+    authErrorBox.textContent = '';
+    authSuccessBox.classList.add('hidden');
+    authSuccessBox.textContent = '';
+}
+
+// 오류 메시지 표시
+function showAuthError(msg) {
+    authErrorBox.textContent = msg;
+    authErrorBox.classList.remove('hidden');
+    authSuccessBox.classList.add('hidden');
+}
+
+// 성공 메시지 표시
+function showAuthSuccess(msg) {
+    authSuccessBox.textContent = msg;
+    authSuccessBox.classList.remove('hidden');
+    authErrorBox.classList.add('hidden');
+}
+
+// 로그인 성공 후 메인 앱 화면으로 전환
+function showMainApp(user) {
+    currentUser = user;
+    authScreen.classList.add('hidden');   // 로그인 화면 숨기기
+    mainApp.classList.remove('hidden');   // 메인 앱 보이기
+
+    // 상단에 현재 이메일 표시
+    if (userEmailDisplay) {
+        userEmailDisplay.textContent = `👤 ${user.email}`;
+    }
+
+    // 보관함 정보 업데이트
+const supabaseUserInfo = document.getElementById('supabase-user-info');
+    if (supabaseUserInfo) {
+        supabaseUserInfo.textContent = `${user.email} 계정의 약물 데이터가 Supabase에 실시간 저장됩니다.`;
+    }
+
+    console.log('✅ 로그인 완료:', user.email);
+    // 로그인한 사람의 약물 보관함 데이터 불러오기
+    fetchMedicinesFromSupabase();
+}
+
+// 📧 로그인 폼 제출
+loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault(); // 기본 폼 제출 동작 방지
+    clearAuthMessages();
+
+    const email    = loginEmail.value.trim();
+    const password = loginPassword.value;
+
+    if (!email || !password) {
+        showAuthError('이메일과 비밀번호를 모두 입력해주세요.');
+        return;
+    }
+
+    // 버튼 로딩 상태로 변경
+    if (loginBtnText) loginBtnText.textContent = '로그인 중...';
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (error) {
+            // Supabase 오류 메시지를 한국어로 변환
+            if (error.message.includes('Invalid login credentials')) {
+                showAuthError('❌ 이메일 또는 비밀번호가 일치하지 않습니다.');
+            } else if (error.message.includes('Email not confirmed')) {
+                showAuthError('❌ 이메일 인증이 필요합니다. 받은 메일함을 확인하세요.');
+            } else {
+                showAuthError(`❌ 로그인 오류: ${error.message}`);
+            }
+        } else if (data.user) {
+            showMainApp(data.user);
+        }
+    } catch (err) {
+        showAuthError(`❌ 네트워크 오류: ${err.message}`);
+    } finally {
+        if (loginBtnText) loginBtnText.textContent = '로그인 →';
+    }
+});
+
+// 📝 회원가입 폼 제출
+registerForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearAuthMessages();
+
+    const email    = regEmail.value.trim();
+    const password = regPassword.value;
+    const confirm  = regPasswordConfirm.value;
+
+    // 입력값 검증
+    if (!email || !password || !confirm) {
+        showAuthError('모든 항목을 입력해주세요.');
+        return;
+    }
+    if (password.length < 6) {
+        showAuthError('❌ 비밀번호는 6자 이상이어야 합니다.');
+        return;
+    }
+    if (password !== confirm) {
+        showAuthError('❌ 비밀번호가 서로 일치하지 않습니다.');
+        return;
+    }
+
+    if (registerBtnText) registerBtnText.textContent = '가입 처리 중...';
+
+    try {
+        const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+                // 이메일 인증 없이 바로 가입 완료 처리
+                emailRedirectTo: window.location.href
+            }
+        });
+
+        if (error) {
+            if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+                showAuthError('❌ 이미 가입된 이메일입니다. 로그인 탭에서 로그인해주세요.');
+            } else {
+                showAuthError(`❌ 회원가입 오류: ${error.message}`);
+            }
+        } else if (data.user) {
+            // 이메일 인증이 비활성화된 경우 바로 로그인됨
+            if (data.session) {
+                showMainApp(data.user);
+            } else {
+                showAuthSuccess('✅ 회원가입 완료! 이메일 인증 없이 바로 로그인하세요.');
+                // 로그인 탭으로 전환
+                authTabLogin.click();
+                loginEmail.value = email;
+            }
+        }
+    } catch (err) {
+        showAuthError(`❌ 네트워크 오류: ${err.message}`);
+    } finally {
+        if (registerBtnText) registerBtnText.textContent = '회원가입 →';
+    }
+});
+
+// 🚪 로그아웃 버튼
+logoutBtn?.addEventListener('click', async () => {
+    if (!confirm('로그아웃 하시겠습니까?')) return;
+
+    await supabaseClient.auth.signOut();
+    currentUser = null;
+    cabinet = []; // 보관함 데이터 초기화
+    renderCabinet();
+
+    // 메인 앱 숨기고 로그인 화면 표시
+    mainApp.classList.add('hidden');
+    authScreen.classList.remove('hidden');
+    clearAuthMessages();
+
+    // 로그인 폼 초기화
+    if (loginEmail) loginEmail.value = '';
+    if (loginPassword) loginPassword.value = '';
+    authTabLogin?.click();
+
+    console.log('🚪 로그아웃 완료');
+});
+
+// 🔄 앱 시작 시: 이미 로그인된 세션이 있으면 바로 메인 앱으로
+// (브라우저를 껐다 켜도 자동 로그인 유지)
+async function checkExistingSession() {
+    if (!supabaseClient) {
+        // Supabase 없으면 그냥 메인 앱 보여줌 (개발 모드)
+        authScreen.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+            showMainApp(session.user);
+        }
+        // 세션 없으면 로그인 화면 유지 (기본값)
+    } catch (err) {
+        console.warn('세션 확인 실패:', err.message);
+    }
+}
+
+// 앱 시작!
+checkExistingSession();
 
 // ──────────────────────────────────────────────────────────
 //  2. Gemini API 키 상태 관리
@@ -81,10 +324,8 @@ function updateApiKeyStatus(isSet) {
 // ──────────────────────────────────────────────────────────
 //  3. 내 약물 보관함 (Cabinet) - LocalStorage 연동
 // ──────────────────────────────────────────────────────────
-let cabinet = JSON.parse(localStorage.getItem('my_medicine_cabinet')) || [
-    { id: 1, name: '종합비타민 (비타민D 1,000 IU)', type: '건강기능식품', selected: true },
-    { id: 2, name: '아스피린장용정 100mg', type: '의약품', selected: true }
-];
+// 보관함 데이터: 로그인 후 Supabase에서 불러오므로 초기값은 빈 배열
+let cabinet = [];
 
 let selectedImageFile = null;
 renderCabinet();
@@ -285,6 +526,7 @@ async function fetchMedicinesFromSupabase() {
             .from('medicines')
             .select('*')
             .order('id', { ascending: false });
+            // ✅ RLS 정책 덕분에 자동으로 현재 로그인된 사용자의 데이터만 반환됩니다!
 
         if (error) {
             console.error('Supabase 조회 오류:', error.message);
@@ -303,6 +545,8 @@ async function fetchMedicinesFromSupabase() {
             renderCabinet();
             renderDbMedicineList(data);
         } else {
+            cabinet = [];
+            renderCabinet();
             renderDbMedicineList([]);
         }
     } catch (err) {
@@ -319,11 +563,12 @@ async function addMedicineToSupabase(name, type = '의약품', ingredients = '')
     cabinet.unshift(newItem);
     renderCabinet();
 
-    if (supabaseClient) {
+    if (supabaseClient && currentUser) {
         try {
+            // user_id를 함께 저장하여 로그인한 사용자의 데이터임을 표시합니다.
             const { data, error } = await supabaseClient
                 .from('medicines')
-                .insert([{ name, type, ingredients, selected: true }])
+                .insert([{ name, type, ingredients, selected: true, user_id: currentUser.id }])
                 .select();
 
             if (error) console.error('Supabase 추가 실패:', error.message);
@@ -334,6 +579,8 @@ async function addMedicineToSupabase(name, type = '의약품', ingredients = '')
         } catch (e) {
             console.error('Supabase 연동 실패:', e);
         }
+    } else if (!currentUser) {
+        console.warn('로그인이 필요합니다.');
     }
 }
 
