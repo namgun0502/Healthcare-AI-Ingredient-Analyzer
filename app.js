@@ -285,24 +285,19 @@ logoutBtn?.addEventListener('click', async () => {
     console.log('🚪 로그아웃 완료 및 대화 내역 초기화 완료');
 });
 
-// 🔄 앱 시작 시: 이미 로그인된 세션이 있으면 바로 메인 앱으로
-// (브라우저를 껐다 켜도 자동 로그인 유지)
+// 🔄 앱 시작 시: 브라우저/앱을 다시 켰을 때는 자동 로그인을 하지 않고 무조건 로그인 화면을 보여줍니다.
 async function checkExistingSession() {
     if (!supabaseClient) {
-        // Supabase 없으면 그냥 메인 앱 보여줌 (개발 모드)
         authScreen.classList.add('hidden');
         mainApp.classList.remove('hidden');
         return;
     }
 
     try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (session && session.user) {
-            showMainApp(session.user);
-        }
-        // 세션 없으면 로그인 화면 유지 (기본값)
+        // 기존 세션이 있다면 세션을 정리(로그아웃)하여 다음 접속 시 무조건 로그인을 거치도록 함
+        await supabaseClient.auth.signOut();
     } catch (err) {
-        console.warn('세션 확인 실패:', err.message);
+        console.warn('초기 세션 리셋:', err.message);
     }
 }
 
