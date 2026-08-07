@@ -141,33 +141,46 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
 
     // Gemini에게 역할 및 출력 형식을 정확히 지정하는 '시스템 지시문' 입니다.
     const systemPrompt = `당신은 한국의 의약품 및 건강기능식품(영양제) 전문 AI 성분 분석 어시스턴트입니다.
-사용자가 약품명, 영양제명, 또는 성분표를 제공하면 다음을 수행하세요:
-1. 해당 제품의 **모든 주성분 및 부성분, 첨가제/보조 성분까지 생략 없이 전체 목록**을 찾아 함량과 함께 상세히 추출하세요. (예: 게보린의 경우 아세트아미노펜, 이소프로필안티피린, 카페인무수물 등 모든 성분 포함)
-2. 각 성분별 주요 역할(효능/작용)을 설명하세요.
-3. 사용자가 제공한 [내 약물 보관함] 목록에 있는 복용 중인 약들과의 상호작용 위험(성분 중복 오남용, 약효 저해, 흡수 방해 등)을 대조 분석하세요.
-4. 일일 권장량 초과 시 WARNING, 주의 시 CAUTION, 안전 시 SAFE로 분류하세요.
-5. 진단이 아닌 참고용 정보임을 명시하고, 정확한 상담은 의사/약사를 안내하세요.
+사용자가 약품명, 영양제명, 또는 성분표를 여러 개 언급하거나 질문하면 다음을 수행하세요:
+
+[필수 규칙]:
+1. 질문에 언급된 **모든 약물과 영양제 각각에 대해** 절대로 누락하지 말고 개별 분석을 수행하세요. (예: "타이레놀, 우루사, 임팩타민 성분 알려줘" 라면 3가지 모두 각각 분석!)
+2. 각 약물/영양제의 **모든 주성분 및 부성분, 함량, 각 성분의 역할/효능**을 빠짐없이 상세히 추출하세요.
+3. 언급된 약물들 간의 상호작용 및 [내 약물 보관함] 목록 약들과의 복합 상호작용 위험(성분 중복, 오남용, 간독성, 흡수 방해 등)을 정밀 대조하세요.
+4. 위험 수준을 WARNING, CAUTION, SAFE 중 결정하세요.
 
 반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
-  "identification": {
-    "product_name": "제품명",
-    "type": "의약품 또는 건강기능식품",
-    "main_ingredients": [
-      {"name": "성분명", "amount": "함량", "role": "성분 역할/효능"}
-    ],
-    "confidence_score": "HIGH 또는 MEDIUM 또는 LOW"
-  },
-  "dosage_guide": {
-    "recommended_daily": "권장 복용법",
-    "precautions": ["주의사항1", "주의사항2"]
-  },
+  "products": [
+    {
+      "product_name": "첫 번째 제품명 (예: 타이레놀 500mg)",
+      "type": "의약품 또는 건강기능식품",
+      "main_ingredients": [
+        {"name": "성분명", "amount": "함량", "role": "성분 역할/효능"}
+      ],
+      "dosage_guide": {
+        "recommended_daily": "권장 복용법",
+        "precautions": ["주의사항1", "주의사항2"]
+      }
+    },
+    {
+      "product_name": "두 번째 제품명 (예: 우루사 100mg)",
+      "type": "의약품 또는 건강기능식품",
+      "main_ingredients": [
+        {"name": "성분명", "amount": "함량", "role": "성분 역할/효능"}
+      ],
+      "dosage_guide": {
+        "recommended_daily": "권장 복용법",
+        "precautions": ["주의사항1", "주의사항2"]
+      }
+    }
+  ],
   "risk_analysis": {
     "has_risk": true 또는 false,
     "risk_level": "WARNING 또는 CAUTION 또는 SAFE",
-    "warnings": ["발견된 위험 내용 설명"]
+    "warnings": ["발견된 위험 내용 설명 (중복 성분, 오남용 위험 등)"]
   },
-  "user_summary": "사용자가 읽기 쉬운 2~3줄 한국어 요약"
+  "user_summary": "질문된 모든 약물들에 대한 종합 3~4줄 한국어 요약"
 }`;
 
     // 실제 Gemini API에 보낼 메시지 내용 구성 (텍스트 + 이미지)
@@ -592,65 +605,104 @@ function localKnowledgeBase(userText, cabinetItems) {
     const text = userText.toLowerCase();
     const cabinetNames = cabinetItems.map(x => x.name.toLowerCase()).join(' ');
 
-    // 타이레놀 (아세트아미노펜)
+    const foundProducts = [];
+
+    // 타이레놀
     if (text.includes('타이레놀') || text.includes('아세트아미노펜')) {
-        const hasDoubleAceta = cabinetNames.includes('게보린') || cabinetNames.includes('타이레놀');
-        return {
-            identification: { product_name: '타이레놀 500mg', type: '의약품', main_ingredients: [{ name: '아세트아미노펜', amount: '500mg' }], confidence_score: 'HIGH' },
-            dosage_guide: { recommended_daily: '1회 1~2정, 하루 최대 4g(4,000mg) 초과 금지, 4~6시간 간격 복용', precautions: ['음주 중 복용 금지 (간 손상 위험)', '하루 총 아세트아미노펜 섭취량 4g 초과 시 간독성 발생'] },
-            risk_analysis: { has_risk: hasDoubleAceta, risk_level: hasDoubleAceta ? 'WARNING' : 'SAFE', warnings: hasDoubleAceta ? ['⚠️ 보관함의 게보린/타이레놀과 성분(아세트아미노펜) 중복! 하루 4g 초과 시 간독성 위험'] : [] },
-            user_summary: hasDoubleAceta ? '🚨 보관함에 동일 성분(아세트아미노펜) 약이 있습니다. 중복 복용 시 하루 최대 한도를 초과하면 간에 심각한 손상이 올 수 있습니다.' : '✅ 타이레놀은 아세트아미노펜 500mg 진통제입니다. 보관함 약물과의 심각한 상호작용은 발견되지 않았습니다.'
-        };
+        foundProducts.push({
+            product_name: '타이레놀 500mg',
+            type: '의약품',
+            main_ingredients: [{ name: '아세트아미노펜', amount: '500mg', role: '해열진통제 (통증 및 발열 완화)' }],
+            dosage_guide: { recommended_daily: '1회 1~2정, 하루 최대 4g(4,000mg) 초과 금지', precautions: ['음주 중 복용 금지 (간 손상 위험)', '다른 아세트아미노펜 제품과 중복 금지'] }
+        });
     }
 
     // 우루사
     if (text.includes('우루사')) {
-        return {
-            identification: { product_name: '우루사 100mg', type: '의약품', main_ingredients: [{ name: '우르소데옥시콜산(UDCA)', amount: '100mg' }, { name: '비타민B1(티아민)', amount: '10mg' }], confidence_score: 'HIGH' },
-            dosage_guide: { recommended_daily: '1일 3회, 1회 1정 식후 복용', precautions: ['담석증 환자는 전문의 상담 후 복용', '임신 초기 복용 금지'] },
-            risk_analysis: { has_risk: false, risk_level: 'SAFE', warnings: [] },
-            user_summary: '✅ 우루사는 우르소데옥시콜산(UDCA)이 주성분인 간 기능 개선 및 소화 촉진 의약품입니다. 보관함 약물들과 심각한 상호작용은 없습니다.'
-        };
+        foundProducts.push({
+            product_name: '우루사 100mg',
+            type: '의약품',
+            main_ingredients: [
+                { name: '우르소데옥시콜산(UDCA)', amount: '100mg', role: '담즙 분비 촉진, 간 기능 개선' },
+                { name: '비타민B1(티아민)', amount: '10mg', role: '피로 회복 및 에너지 대사' }
+            ],
+            dosage_guide: { recommended_daily: '1일 3회, 1회 1정 식후 복용', precautions: ['담석증 환자는 전문의 상담 후 복용'] }
+        });
     }
 
     // 게보린
     if (text.includes('게보린')) {
-        const hasAceta = cabinetNames.includes('타이레놀');
-        return {
-            identification: { product_name: '게보린정', type: '의약품', main_ingredients: [{ name: '아세트아미노펜', amount: '300mg' }, { name: '이소프로필안티피린', amount: '150mg' }, { name: '카페인무수물', amount: '50mg' }], confidence_score: 'HIGH' },
-            dosage_guide: { recommended_daily: '1회 1정, 1일 3회 이내, 식후 복용', precautions: ['아세트아미노펜 포함으로 하루 복용량 주의', '카페인 민감자 주의'] },
-            risk_analysis: { has_risk: hasAceta, risk_level: hasAceta ? 'WARNING' : 'CAUTION', warnings: hasAceta ? ['⚠️ 보관함의 타이레놀과 아세트아미노펜 성분 중복! 간독성 위험'] : ['카페인 성분 포함 (커피, 에너지음료와 함께 복용 시 카페인 과다 주의)'] },
-            user_summary: hasAceta ? '🚨 보관함의 타이레놀과 게보린은 둘 다 아세트아미노펜을 포함하므로 동시 복용하면 간 독성 위험이 있습니다!' : '⚠️ 게보린은 아세트아미노펜+이소프로필안티피린+카페인 복합 진통제입니다. 카페인 과다에 주의하세요.'
-        };
+        foundProducts.push({
+            product_name: '게보린정',
+            type: '의약품',
+            main_ingredients: [
+                { name: '아세트아미노펜', amount: '300mg', role: '해열 진통 효과' },
+                { name: '이소프로필안티피린', amount: '150mg', role: '소염 진통 작용' },
+                { name: '카페인무수물', amount: '50mg', role: '진통 효과 증대 및 약효 흡수 촉진' }
+            ],
+            dosage_guide: { recommended_daily: '1회 1정, 1일 3회 이내 복용', precautions: ['카페인 민감자 주의', '타이레놀과 중복 복용 주의'] }
+        });
     }
 
     // 임팩타민
     if (text.includes('임팩타민')) {
-        return {
-            identification: { product_name: '임팩타민 파워', type: '건강기능식품', main_ingredients: [{ name: '벤포티아민(비타민B1)', amount: '50mg' }, { name: '비타민B2', amount: '20mg' }, { name: '비타민B6', amount: '30mg' }, { name: '비타민B12', amount: '250mcg' }], confidence_score: 'HIGH' },
-            dosage_guide: { recommended_daily: '1일 1회 1정 식후 복용', precautions: ['고용량 비타민B6의 장기 복용은 신경병증 유발 가능'] },
-            risk_analysis: { has_risk: false, risk_level: 'SAFE', warnings: [] },
-            user_summary: '✅ 임팩타민은 고함량 비타민 B군 복합 영양제입니다. 피로 회복에 도움을 주며 보관함 약물들과의 심각한 상호작용은 없습니다.'
-        };
+        foundProducts.push({
+            product_name: '임팩타민 파워',
+            type: '건강기능식품',
+            main_ingredients: [
+                { name: '벤포티아민(비타민B1)', amount: '50mg', role: '육체 피로 및 활력 개선' },
+                { name: '비타민B2', amount: '20mg', role: '구포염 예방, 세포 대사' },
+                { name: '비타민B6', amount: '30mg', role: '신경 전달 물질 합성' },
+                { name: '비타민B12', amount: '250mcg', role: '적혈구 형성 및 신경 건강' }
+            ],
+            dosage_guide: { recommended_daily: '1일 1회 1정 식후 복용', precautions: ['고용량 비타민B군 복용 시 위장 장애 주의'] }
+        });
     }
 
     // 오메가3
     if (text.includes('오메가3') || text.includes('오메가-3')) {
+        foundProducts.push({
+            product_name: '오메가3 EPA/DHA',
+            type: '건강기능식품',
+            main_ingredients: [
+                { name: 'EPA(에이코사펜타엔산)', amount: '180mg', role: '혈중 중성지질 및 혈행 개선' },
+                { name: 'DHA(도코사헥사엔산)', amount: '120mg', role: '뇌 세포 및 망막 구성 성분' }
+            ],
+            dosage_guide: { recommended_daily: '1일 1~3캡슐 식후 복용', precautions: ['항응고제 복용 시 출혈 위험 주의'] }
+        });
+    }
+
+    // 감지된 약물이 있는 경우
+    if (foundProducts.length > 0) {
+        const productNames = foundProducts.map(p => p.product_name).join(', ');
         const hasAspirin = cabinetNames.includes('아스피린') || cabinetNames.includes('와파린');
+        const hasAcetaDouble = (text.includes('타이레놀') && text.includes('게보린')) || (cabinetNames.includes('타이레놀') && text.includes('게보린'));
+
+        const warnings = [];
+        if (hasAcetaDouble) warnings.push('⚠️ 타이레놀과 게보린 모두 아세트아미노펜을 포함하여 중복 복용 시 간 독성 위험이 발생합니다.');
+        if (hasAspirin && (text.includes('오메가3') || text.includes('오메가-3'))) warnings.push('⚠️ 보관함의 아스피린과 오메가3 병용 시 혈액 지혈 지연 가능성이 있습니다.');
+
         return {
-            identification: { product_name: '오메가3 EPA/DHA', type: '건강기능식품', main_ingredients: [{ name: 'EPA(에이코사펜타엔산)', amount: '180mg' }, { name: 'DHA(도코사헥사엔산)', amount: '120mg' }], confidence_score: 'HIGH' },
-            dosage_guide: { recommended_daily: '1일 1~3캡슐 식후 복용', precautions: ['항응고제 복용 시 출혈 위험 주의', '수술 2주 전 복용 중단 권장'] },
-            risk_analysis: { has_risk: hasAspirin, risk_level: hasAspirin ? 'CAUTION' : 'SAFE', warnings: hasAspirin ? ['⚠️ 보관함의 아스피린과 함께 복용 시 혈액 응고 억제 효과가 과도해져 출혈 위험이 증가할 수 있습니다.'] : [] },
-            user_summary: hasAspirin ? '⚠️ 오메가3와 보관함의 아스피린을 함께 드시면 혈액이 너무 묽어질 수 있으므로 담당 의사와 상담 후 복용을 결정하세요.' : '✅ 오메가3는 EPA와 DHA를 주성분으로 하는 심혈관 건강 보조 영양제입니다. 보관함 약물들과 심각한 위험은 없습니다.'
+            products: foundProducts,
+            risk_analysis: {
+                has_risk: warnings.length > 0,
+                risk_level: warnings.length > 0 ? 'WARNING' : 'SAFE',
+                warnings: warnings
+            },
+            user_summary: `✅ 질문하신 ${foundProducts.length}가지 제품(${productNames})의 전체 성분 분석을 완료했습니다.`
         };
     }
 
     // 알 수 없는 약품 - 일반 응답
     return {
-        identification: { product_name: userText.substring(0, 40), type: '분류 불명', main_ingredients: [{ name: '성분 확인 불가 (API 키 필요)', amount: '-' }], confidence_score: 'LOW' },
-        dosage_guide: { recommended_daily: '제품 포장지 용법 참고', precautions: ['정확한 성분 분석을 위해 Gemini API 키를 설정해주세요.'] },
+        products: [{
+            product_name: userText.substring(0, 40),
+            type: '분류 불명',
+            main_ingredients: [{ name: '성분 확인 불가 (API 키 필요)', amount: '-', role: 'Gemini API 키를 등록하면 정확한 성분이 조회됩니다.' }],
+            dosage_guide: { recommended_daily: '제품 포장지 용법 참고', precautions: ['정확한 성분 분석을 위해 Gemini API 키를 설정해주세요.'] }
+        }],
         risk_analysis: { has_risk: false, risk_level: 'SAFE', warnings: [] },
-        user_summary: `💡 "${userText.substring(0,20)}..."에 대한 정보를 찾을 수 없습니다. 우측 패널에서 Gemini API 키를 설정하시면 어떤 약이든 실제 AI가 정확히 분석해 드립니다!`
+        user_summary: `💡 "${userText.substring(0,20)}..."에 대한 정보를 찾을 수 없습니다. Gemini API 키를 설정하시면 어떤 약이든 실제 AI가 정확히 분석해 드립니다!`
     };
 }
 
@@ -710,43 +762,83 @@ function appendAiResponseMessage(res) {
             </div>`;
     }
 
-    const prodName = res.identification?.product_name || '분석 결과';
-    const prodType = res.identification?.type || '';
-    
-    // 주성분 및 모든 부성분을 성분명, 함량, 역할과 함께 나열
-    const ingredientsHtml = res.identification?.main_ingredients?.map(i => `
-        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(56,189,248,0.25);border-radius:6px;padding:0.4rem 0.6rem;margin-bottom:0.3rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span style="color:#38bdf8;font-weight:600;font-size:0.85rem;">🧪 ${escapeHtml(i.name)}</span>
-                <span style="background:rgba(56,189,248,0.15);color:#7dd3fc;border-radius:4px;padding:0.05rem 0.4rem;font-size:0.75rem;font-weight:600;">${escapeHtml(i.amount || '함량 정보 없음')}</span>
+function appendAiResponseMessage(res) {
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble ai-bubble';
+
+    const riskLevel  = res.risk_analysis?.risk_level || 'SAFE';
+    const badgeClass = `badge-${riskLevel.toLowerCase()}`;
+
+    let warningHtml = '';
+    if (res.risk_analysis?.warnings?.length > 0) {
+        warningHtml = `
+            <div style="margin-top:0.5rem;padding:0.75rem;background:rgba(248,113,113,0.1);border:1px solid #f87171;border-radius:8px;">
+                <strong style="color:#f87171;">⚠️ 보관함 및 약물 간 상호작용 위험:</strong>
+                <ul style="padding-left:1.2rem;font-size:0.88rem;color:#fecdd3;margin-top:0.3rem;">
+                    ${res.risk_analysis.warnings.map(w => `<li>${w}</li>`).join('')}
+                </ul>
+            </div>`;
+    }
+
+    // 단일 제품 구조(기존) or 다중 제품 배열 구조 호환 처리
+    let productList = [];
+    if (res.products && Array.isArray(res.products) && res.products.length > 0) {
+        productList = res.products;
+    } else if (res.identification) {
+        productList = [{
+            product_name: res.identification.product_name || '분석 제품',
+            type: res.identification.type || '',
+            main_ingredients: res.identification.main_ingredients || [],
+            dosage_guide: res.dosage_guide || {}
+        }];
+    }
+
+    // 언급된 여러 약물 각각을 개별 카드 뷰로 렌더링
+    const productsHtml = productList.map((prod, idx) => {
+        const prodName = prod.product_name || `제품 ${idx + 1}`;
+        const prodType = prod.type || '분류 미지정';
+
+        const ingredientsHtml = prod.main_ingredients?.map(i => `
+            <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(56,189,248,0.25);border-radius:6px;padding:0.4rem 0.6rem;margin-bottom:0.3rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:#38bdf8;font-weight:600;font-size:0.85rem;">🧪 ${escapeHtml(i.name)}</span>
+                    <span style="background:rgba(56,189,248,0.15);color:#7dd3fc;border-radius:4px;padding:0.05rem 0.4rem;font-size:0.75rem;font-weight:600;">${escapeHtml(i.amount || '함량 정보 없음')}</span>
+                </div>
+                ${i.role ? `<div style="font-size:0.78rem;color:#94a3b8;margin-top:0.25rem;">💡 ${escapeHtml(i.role)}</div>` : ''}
             </div>
-            ${i.role ? `<div style="font-size:0.78rem;color:#94a3b8;margin-top:0.25rem;">💡 ${escapeHtml(i.role)}</div>` : ''}
-        </div>
-    `).join('') || '<span style="color:#8b949e;font-size:0.8rem;">성분 정보 없음</span>';
+        `).join('') || '<span style="color:#8b949e;font-size:0.8rem;">성분 정보 없음</span>';
+
+        return `
+            <div class="report-card-inline" style="margin-top:0.75rem;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:0.4rem;">
+                    <span style="font-weight:700;font-size:0.95rem;color:#f0f6fc;">📦 ${idx + 1}. ${escapeHtml(prodName)}</span>
+                    <span style="color:#8b949e;font-size:0.78rem;background:#1e293b;padding:0.1rem 0.5rem;border-radius:4px;">${escapeHtml(prodType)}</span>
+                </div>
+                <p style="margin-bottom:0.4rem;"><strong>🧪 전체 성분 상세:</strong></p>
+                <div style="margin-bottom:0.6rem;">${ingredientsHtml}</div>
+                <p style="margin-bottom:0.3rem;font-size:0.85rem;"><strong>📋 복용 가이드:</strong> ${escapeHtml(prod.dosage_guide?.recommended_daily || '-')}</p>
+                ${prod.dosage_guide?.precautions?.length > 0 ? `<ul style="padding-left:1.1rem;font-size:0.8rem;color:#94a3b8;margin-top:0.2rem;">${prod.dosage_guide.precautions.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` : ''}
+                
+                <button class="save-cabinet-btn" onclick="saveToCabinet('${escapeHtml(prodName)}', '${escapeHtml(prodType)}')">
+                    💾 '${escapeHtml(prodName)}' 내 보관함에 추가하기
+                </button>
+            </div>
+        `;
+    }).join('');
 
     bubble.innerHTML = `
         <div class="avatar">✨</div>
         <div class="bubble-content">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-                <strong>🔬 AI 전체 성분 & 대조 분석 결과</strong>
+                <strong>🔬 AI 분석 결과 (${productList.length}개 약물 성분 분석)</strong>
                 <span class="risk-badge-inline ${badgeClass}">${riskLevel}</span>
             </div>
 
-            <p style="margin-bottom:0.7rem;line-height:1.6;">${res.user_summary}</p>
+            <p style="margin-bottom:0.7rem;line-height:1.6;">${res.user_summary || '입력하신 약물들에 대한 분석이 완료되었습니다.'}</p>
 
             ${warningHtml}
 
-            <div class="report-card-inline" style="margin-top:0.75rem;">
-                <p style="margin-bottom:0.5rem;"><strong>📦 제품명:</strong> ${prodName} <span style="color:#8b949e;font-size:0.8rem;">(${prodType})</span></p>
-                <p style="margin-bottom:0.4rem;"><strong>🧪 제품 함유 전체 성분 목록:</strong></p>
-                <div style="margin-bottom:0.75rem;">${ingredientsHtml}</div>
-                <p style="margin-bottom:0.3rem;"><strong>📋 복용 가이드:</strong> ${res.dosage_guide?.recommended_daily || '-'}</p>
-                ${res.dosage_guide?.precautions?.length > 0 ? `<ul style="padding-left:1.1rem;font-size:0.82rem;color:#94a3b8;margin-top:0.2rem;">${res.dosage_guide.precautions.map(p => `<li>${p}</li>`).join('')}</ul>` : ''}
-                
-                <button class="save-cabinet-btn" onclick="saveToCabinet('${escapeHtml(prodName)}', '${escapeHtml(prodType)}')">
-                    💾 내 약물 보관함에 이 약 추가하기
-                </button>
-            </div>
+            ${productsHtml}
         </div>`;
 
     chatHistory.appendChild(bubble);
