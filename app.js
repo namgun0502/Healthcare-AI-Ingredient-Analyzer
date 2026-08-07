@@ -27,6 +27,19 @@ const apiKeyStatusEl = document.getElementById('api-key-status');
 const aiStatusEl     = document.getElementById('ai-status');
 
 // ──────────────────────────────────────────────────────────
+//  1-1. Supabase 데이터베이스 클라이언트 초기화
+// ──────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://qzhgsshyhmnczmreagqd.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6aGdzc2h5aG1uY3ptcmVhZ3FkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNzc0NzksImV4cCI6MjA5Nzg1MzQ3OX0.2NZxyClmIpj7WtUuZtexZqAMuTnC7udF5FejwitzvcU";
+
+// window.supabase SDK 사용
+let supabaseClient = null;
+if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase DB 클라이언트 연결 성공!');
+}
+
+// ──────────────────────────────────────────────────────────
 //  2. Gemini API 키 상태 관리
 // ──────────────────────────────────────────────────────────
 // LocalStorage에서 저장된 API 키를 불러옵니다.
@@ -238,12 +251,101 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
 // ──────────────────────────────────────────────────────────
 //  5. 보관함 UI 렌더링 함수
 // ──────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────
+//  5. 보관함 UI 렌더링 & Supabase DB 연동 함수
+// ──────────────────────────────────────────────────────────
+
+// Supabase DB에서 약물 목록 가져오기
+async function fetchMedicinesFromSupabase() {
+    if (!supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient
+            .from('medicines')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) {
+            console.error('Supabase 조회 오류:', error.message);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            // DB 데이터가 있으면 로컬 cabinet 배열 업데이트
+            cabinet = data.map(item => ({
+                id: item.id,
+                name: item.name,
+                type: item.type || '의약품',
+                ingredients: item.ingredients || '',
+                selected: item.selected !== false
+            }));
+            renderCabinet();
+            renderDbMedicineList(data);
+        } else {
+            renderDbMedicineList([]);
+        }
+    } catch (err) {
+        console.warn('Supabase 데이터 로드 중 오류:', err.message);
+    }
+}
+
+// Supabase DB에 약물 새로 추가하기
+async function addMedicineToSupabase(name, type = '의약품', ingredients = '') {
+    if (!name.trim()) return;
+
+    // 로컬 즉시 추가
+    const newItem = { id: Date.now(), name, type, ingredients, selected: true };
+    cabinet.unshift(newItem);
+    renderCabinet();
+
+    if (supabaseClient) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('medicines')
+                .insert([{ name, type, ingredients, selected: true }])
+                .select();
+
+            if (error) console.error('Supabase 추가 실패:', error.message);
+            else {
+                console.log('Supabase 추가 성공:', data);
+                fetchMedicinesFromSupabase();
+            }
+        } catch (e) {
+            console.error('Supabase 연동 실패:', e);
+        }
+    }
+}
+
+// Supabase DB에서 약물 삭제하기
+async function deleteMedicineFromSupabase(id) {
+    // 로컬 제거
+    cabinet = cabinet.filter(x => String(x.id) !== String(id));
+    renderCabinet();
+
+    if (supabaseClient) {
+        try {
+            const { error } = await supabaseClient
+                .from('medicines')
+                .delete()
+                .eq('id', id);
+
+            if (error) console.error('Supabase 삭제 실패:', error.message);
+            else {
+                console.log('Supabase 삭제 성공 ID:', id);
+                fetchMedicinesFromSupabase();
+            }
+        } catch (e) {
+            console.error('Supabase 삭제 중 예외:', e);
+        }
+    }
+}
+
+// 메인 화면 보관함 리스트 렌더링
 function renderCabinet() {
     cabinetCountEl.textContent = cabinet.length;
     localStorage.setItem('my_medicine_cabinet', JSON.stringify(cabinet));
 
     if (cabinet.length === 0) {
-        cabinetListEl.innerHTML = `<div style="text-align:center;font-size:0.78rem;color:#8b949e;padding:1rem;">보관함이 비어 있습니다.<br>AI 분석 후 [보관함에 저장]해보세요!</div>`;
+        cabinetListEl.innerHTML = `<div style="text-align:center;font-size:0.78rem;color:#8b949e;padding:1rem;">보관함이 비어 있습니다.<br>AI 분석 후 [보관함에 저장]하거나 상단 [약물 보관함 관리] 탭에서 추가해보세요!</div>`;
         return;
     }
 
@@ -256,33 +358,112 @@ function renderCabinet() {
                     <span class="cabinet-type">${item.type}</span>
                 </div>
             </div>
-            <button class="delete-item-btn" data-id="${item.id}" title="삭제">✕</button>
+            <button class="delete-item-btn" data-id="${item.id}" title="대조 대상에서 제외 (DB 삭제 안 됨)">✕</button>
         </div>
     `).join('');
 
     document.querySelectorAll('.cabinet-checkbox').forEach(chk => {
         chk.addEventListener('change', (e) => {
-            const id = Number(e.target.getAttribute('data-id'));
-            const found = cabinet.find(x => x.id === id);
+            const id = e.target.getAttribute('data-id');
+            const found = cabinet.find(x => String(x.id) === String(id));
             if (found) { found.selected = e.target.checked; renderCabinet(); }
         });
     });
 
     document.querySelectorAll('.delete-item-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const id = Number(e.target.getAttribute('data-id'));
-            cabinet = cabinet.filter(x => x.id !== id);
+            const id = e.target.getAttribute('data-id');
+            cabinet = cabinet.filter(x => String(x.id) !== String(id));
             renderCabinet();
         });
     });
 }
 
+// 메인 화면 [선택 해제 / 전체 비우기] 클릭 시: 체크박스만 해제 (DB 데이터는 삭제되지 않음!)
 clearCabinetBtn.addEventListener('click', () => {
-    if (confirm('내 약물 보관함을 전부 비우시겠습니까?')) {
-        cabinet = [];
+    if (cabinet.length === 0) return;
+    if (confirm('현재 대 대조할 약물 선택을 모두 해제하시겠습니까?\n(💡 Supabase DB의 약물 데이터는 삭제되지 않고 안전하게 보관됩니다.)')) {
+        cabinet.forEach(x => x.selected = false);
         renderCabinet();
     }
 });
+
+// ──────────────────────────────────────────────────────────
+//  5-1. 약물 보관함 관리 모달 (Supabase 전용 관리 탭)
+// ──────────────────────────────────────────────────────────
+const openManageModalBtn  = document.getElementById('open-manage-modal-btn');
+const closeManageModalBtn = document.getElementById('close-manage-modal-btn');
+const manageModal         = document.getElementById('manage-modal');
+
+const newMedNameInput        = document.getElementById('new-med-name');
+const newMedTypeSelect       = document.getElementById('new-med-type');
+const newMedIngredientsInput = document.getElementById('new-med-ingredients');
+const addMedDbBtn            = document.getElementById('add-med-db-btn');
+
+const dbMedListEl  = document.getElementById('db-med-list');
+const dbMedCountEl = document.getElementById('db-med-count');
+const refreshDbBtn = document.getElementById('refresh-db-btn');
+
+// 모달 열기/닫기
+openManageModalBtn?.addEventListener('click', () => {
+    manageModal.classList.remove('hidden');
+    fetchMedicinesFromSupabase();
+});
+
+closeManageModalBtn?.addEventListener('click', () => {
+    manageModal.classList.add('hidden');
+});
+
+refreshDbBtn?.addEventListener('click', fetchMedicinesFromSupabase);
+
+// 신규 약물 추가 버튼
+addMedDbBtn?.addEventListener('click', async () => {
+    const name = newMedNameInput.value.trim();
+    const type = newMedTypeSelect.value;
+    const ingredients = newMedIngredientsInput.value.trim();
+
+    if (!name) {
+        alert('약물 또는 영양제 이름을 입력해주세요.');
+        return;
+    }
+
+    await addMedicineToSupabase(name, type, ingredients);
+    newMedNameInput.value = '';
+    newMedIngredientsInput.value = '';
+    alert(`✅ '${name}' 제품이 Supabase DB 보관함에 추가되었습니다!`);
+});
+
+// 관리 모달 내부 DB 목록 렌더링
+function renderDbMedicineList(items) {
+    if (!dbMedListEl) return;
+    dbMedCountEl.textContent = items.length;
+
+    if (items.length === 0) {
+        dbMedListEl.innerHTML = `<div style="text-align:center;color:#8b949e;padding:1.5rem;font-size:0.85rem;">등록된 약물이 없습니다. 위 폼에서 약물을 추가해보세요!</div>`;
+        return;
+    }
+
+    dbMedListEl.innerHTML = items.map(item => `
+        <div class="db-med-row">
+            <div class="db-med-info">
+                <span class="db-med-title">💊 ${escapeHtml(item.name)} <span style="font-size:0.75rem;color:#38bdf8;">(${escapeHtml(item.type)})</span></span>
+                <span class="db-med-sub">🧪 성분: ${escapeHtml(item.ingredients || '성분 미입력')}</span>
+            </div>
+            <button class="secondary-btn-danger" onclick="confirmDeleteDbItem('${item.id}', '${escapeHtml(item.name)}')">DB에서 삭제 🗑️</button>
+        </div>
+    `).join('');
+}
+
+// 글로벌 삭제 확정 함수
+window.confirmDeleteDbItem = async function(id, name) {
+    if (confirm(`정말로 Supabase DB에서 '${name}' 약물을 영구 삭제하시겠습니까?`)) {
+        await deleteMedicineFromSupabase(id);
+        alert(`🗑️ '${name}' 약물이 Supabase DB에서 삭제되었습니다.`);
+    }
+};
+
+// 초기화 시 Supabase에서 약물 불러오기
+fetchMedicinesFromSupabase();
 
 // ──────────────────────────────────────────────────────────
 //  6. 사진 첨부 기능
@@ -556,14 +737,13 @@ function appendAiResponseMessage(res) {
 // ──────────────────────────────────────────────────────────
 //  12. 보관함 저장 글로벌 함수
 // ──────────────────────────────────────────────────────────
-window.saveToCabinet = function(name, type) {
+window.saveToCabinet = async function(name, type) {
     if (cabinet.some(x => x.name === name)) {
         alert('이미 보관함에 저장되어 있는 제품입니다.');
         return;
     }
-    cabinet.push({ id: Date.now(), name, type, selected: true });
-    renderCabinet();
-    alert(`✅ '${name}' 제품이 내 약물 보관함에 저장되었습니다!`);
+    await addMedicineToSupabase(name, type, 'AI 분석 추가 성분');
+    alert(`✅ '${name}' 제품이 Supabase DB 및 내 약물 보관함에 저장되었습니다!`);
 };
 
 // ──────────────────────────────────────────────────────────

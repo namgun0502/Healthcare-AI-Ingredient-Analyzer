@@ -10,6 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Supabase JS Client SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <!-- 스타일시트 -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -26,6 +29,7 @@
                 <span class="version-tag">Gemini 1.5 Flash</span>
             </div>
             <div class="nav-actions">
+                <button id="open-manage-modal-btn" class="manage-tab-btn">💊 약물 보관함 관리</button>
                 <span id="ai-status" class="status-indicator"><span class="dot dot-gray"></span> API 키 미설정</span>
             </div>
         </header>
@@ -110,9 +114,9 @@
                 <div class="sidebar-card cabinet-card">
                     <div class="card-title">
                         <span>💊 내 약물 보관함 (<span id="cabinet-count">0</span>개)</span>
-                        <button id="clear-cabinet-btn" class="secondary-btn-danger">전체 비우기</button>
+                        <button id="clear-cabinet-btn" class="secondary-btn-danger" title="현재 대조 대상 선택만 모두 해제합니다 (DB 데이터는 보존)">선택 해제</button>
                     </div>
-                    <p class="cabinet-help">체크박스를 선택한 약물들이 AI 대화 시 자동 대조 분석됩니다.</p>
+                    <p class="cabinet-help">체크박스를 선택한 약물들이 대조 분석됩니다. (영구 삭제는 [약물 보관함 관리] 탭 사용)</p>
                     
                     <!-- 보관함 리스트 (동적 생성) -->
                     <div id="cabinet-list" class="cabinet-list">
@@ -139,6 +143,52 @@
 
             </aside>
 
+        </div>
+    </div>
+
+    <!-- ⚡ Supabase 약물 보관함 관리 탭 (모달 레이아웃) -->
+    <div id="manage-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💊 Supabase 약물 보관함 데이터 관리</h2>
+                <button id="close-manage-modal-btn" class="close-modal-btn">✕</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- 1. Supabase 연동 상태 표시 카드 -->
+                <div class="modal-card">
+                    <div class="card-title">
+                        <span>⚡ Supabase DB 실시간 연결 상태</span>
+                        <span id="supabase-status-badge" class="api-status-tag tag-set">연결 완료 ✅</span>
+                    </div>
+                    <p class="cabinet-help">남건의 Supabase 클라우드 데이터베이스에 실시간으로 데이터가 저장됩니다.</p>
+                </div>
+
+                <!-- 2. 신규 약물 DB에 추가하기 폼 -->
+                <div class="modal-card">
+                    <h3>➕ 보관함에 새 약물/영양제 직접 추가</h3>
+                    <div class="add-medicine-form">
+                        <input type="text" id="new-med-name" class="form-control" placeholder="약물 또는 영양제 이름 (예: 우루사 100mg)">
+                        <select id="new-med-type" class="form-control-select">
+                            <option value="의약품">의약품</option>
+                            <option value="건강기능식품">건강기능식품 (영양제)</option>
+                        </select>
+                        <input type="text" id="new-med-ingredients" class="form-control" placeholder="주요 성분 (예: UDCA 100mg, 비타민B1)">
+                        <button id="add-med-db-btn" class="save-api-btn">데이터베이스에 추가 💾</button>
+                    </div>
+                </div>
+
+                <!-- 3. Supabase DB 약물 목록 & 삭제 관리 -->
+                <div class="modal-card">
+                    <div class="card-title">
+                        <span>📋 데이터베이스 전체 약물 목록 (<span id="db-med-count">0</span>개)</span>
+                        <button id="refresh-db-btn" class="secondary-btn">🔄 새로고침</button>
+                    </div>
+                    <div id="db-med-list" class="db-med-list">
+                        <!-- JS에서 동적 렌더링 -->
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
