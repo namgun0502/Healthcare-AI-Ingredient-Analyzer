@@ -93,17 +93,22 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
         if (listRes.ok) {
             const listData = await listRes.json();
             // generateContent를 지원하며 이름에 'gemini'가 포함된 모델만 필터링
+            // gemini-2.5는 신규 사용자 사용 불가이므로 제외, experimental 제외
             MODELS = (listData.models || [])
                 .filter(m =>
                     m.supportedGenerationMethods?.includes('generateContent') &&
-                    m.name.includes('gemini')
+                    m.name.includes('gemini') &&
+                    !m.name.includes('gemini-2.5') &&
+                    !m.name.includes('experimental') &&
+                    !m.name.includes('preview')
                 )
                 .map(m => m.name.replace('models/', ''))
-                // flash 계열 먼저, pro 계열 나중에 정렬
+                // flash 계열 먼저, 숫자 낮은 버전(더 안정적) 우선 정렬
                 .sort((a, b) => {
                     const aFlash = a.includes('flash') ? 0 : 1;
                     const bFlash = b.includes('flash') ? 0 : 1;
-                    return aFlash - bFlash;
+                    if (aFlash !== bFlash) return aFlash - bFlash;
+                    return a.localeCompare(b);
                 });
         }
     } catch (e) {
@@ -191,15 +196,18 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
             if (!response.ok) {
                 const errData = await response.json();
                 const errMsg = errData.error?.message || '';
-                // quota 초과, 모델 없음, 권한 없음 오류 시 다음 모델로 자동 전환
+                // quota 초과, 모델 없음, 사용 불가, 권한 없음 오류 시 다음 모델로 자동 전환
                 const isSkippable = 
                     response.status === 429 ||
                     errMsg.toLowerCase().includes('quota') ||
                     errMsg.toLowerCase().includes('not found') ||
                     errMsg.toLowerCase().includes('not supported') ||
-                    errMsg.toLowerCase().includes('permission');
+                    errMsg.toLowerCase().includes('no longer available') ||
+                    errMsg.toLowerCase().includes('deprecated') ||
+                    errMsg.toLowerCase().includes('permission') ||
+                    errMsg.toLowerCase().includes('available to new');
                 if (isSkippable) {
-                    console.warn(`[모델 전환] ${model} 사용 불가 → 다음 모델 시도 중...`, errMsg.substring(0, 80));
+                    console.warn(`[모델 건너뜀] ${model} 사용 불가 → 다음 모델 시도 중...`, errMsg.substring(0, 80));
                     lastError = new Error(`${model}: ${errMsg}`);
                     continue; // 다음 모델로 이동
                 }
