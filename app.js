@@ -758,24 +758,6 @@ function appendAiResponseMessage(res) {
     if (res.risk_analysis?.warnings?.length > 0) {
         warningHtml = `
             <div style="margin-top:0.5rem;padding:0.75rem;background:rgba(248,113,113,0.1);border:1px solid #f87171;border-radius:8px;">
-                <strong style="color:#f87171;">⚠️ 보관함 대조 위험 발견:</strong>
-                <ul style="padding-left:1.2rem;font-size:0.88rem;color:#fecdd3;margin-top:0.3rem;">
-                    ${res.risk_analysis.warnings.map(w => `<li>${w}</li>`).join('')}
-                </ul>
-            </div>`;
-    }
-
-function appendAiResponseMessage(res) {
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble ai-bubble';
-
-    const riskLevel  = res.risk_analysis?.risk_level || 'SAFE';
-    const badgeClass = `badge-${riskLevel.toLowerCase()}`;
-
-    let warningHtml = '';
-    if (res.risk_analysis?.warnings?.length > 0) {
-        warningHtml = `
-            <div style="margin-top:0.5rem;padding:0.75rem;background:rgba(248,113,113,0.1);border:1px solid #f87171;border-radius:8px;">
                 <strong style="color:#f87171;">⚠️ 보관함 및 약물 간 상호작용 위험:</strong>
                 <ul style="padding-left:1.2rem;font-size:0.88rem;color:#fecdd3;margin-top:0.3rem;">
                     ${res.risk_analysis.warnings.map(w => `<li>${w}</li>`).join('')}
