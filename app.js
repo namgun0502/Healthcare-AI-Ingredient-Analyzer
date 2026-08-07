@@ -41,8 +41,9 @@ if (GEMINI_API_KEY) {
 // API 키 저장 버튼 클릭 이벤트
 saveApiKeyBtn.addEventListener('click', () => {
     const key = apiKeyInput.value.trim();
-    if (!key.startsWith('AIza')) {
-        alert('올바른 Gemini API 키 형식이 아닙니다. "AIza"로 시작하는 키를 입력해주세요.');
+    // API 키 최소 길이만 확인 (형식 제한 없음 - 다양한 형태의 키 허용)
+    if (key.length < 6) {
+        alert('API 키가 너무 짧습니다. 올바른 Gemini API 키를 입력해주세요.');
         return;
     }
     GEMINI_API_KEY = key;
@@ -81,7 +82,8 @@ renderCabinet();
 //    진짜 약 성분/용법/상호작용 위험 정보를 받아오는 함수입니다.
 // ──────────────────────────────────────────────────────────
 async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // Gemini 2.0 Flash 엔드포인트 (최신 버전, aq 포함 모든 형식의 키 호환)
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     // 보관함 선택 약물 목록을 텍스트로 구성
     const cabinetText = cabinetItems.length > 0
