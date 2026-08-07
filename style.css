@@ -1221,3 +1221,19 @@ code {
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
     color: var(--text-main);
 }
+
+/* 비밀번호 찾기 텍스트 링크 버튼 스타일 */
+.text-link-btn {
+    background: none;
+    border: none;
+    color: #60a5fa;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+.text-link-btn:hover {
+    color: #93c5fd;
+}
+

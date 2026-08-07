@@ -13,6 +13,7 @@ const loginForm          = document.getElementById('login-form');
 const loginEmail         = document.getElementById('login-email');
 const loginPassword      = document.getElementById('login-password');
 const loginBtnText       = document.getElementById('login-btn-text');
+const forgotPwBtn        = document.getElementById('forgot-pw-btn'); // 🔑 비밀번호 찾기 버튼
 
 // 회원가입 폼 요소들
 const registerForm           = document.getElementById('register-form');
@@ -34,12 +35,26 @@ const authSuccessBox = document.getElementById('auth-success-box');
 const logoutBtn         = document.getElementById('logout-btn');
 const userEmailDisplay  = document.getElementById('user-email-display');
 const editNicknameBtn   = document.getElementById('edit-nickname-btn'); // ✏️ 닉네임 수정 버튼
+const changePwBtn       = document.getElementById('change-pw-btn');     // 🔒 비밀번호 변경 버튼
 
 // 닉네임 설정/수정 모달 요소들
 const nicknameModal         = document.getElementById('nickname-modal');
 const modalNicknameInput    = document.getElementById('modal-nickname-input');
 const closeNicknameModalBtn = document.getElementById('close-nickname-modal-btn');
 const saveNicknameModalBtn  = document.getElementById('save-nickname-modal-btn');
+
+// 비밀번호 재설정 이메일 발송 모달 요소들
+const resetPwModal         = document.getElementById('reset-pw-modal');
+const resetEmailInput      = document.getElementById('reset-email-input');
+const closeResetPwModalBtn = document.getElementById('close-reset-pw-modal-btn');
+const sendResetPwBtn       = document.getElementById('send-reset-pw-btn');
+
+// 비밀번호 변경 모달 요소들
+const changePwModal         = document.getElementById('change-pw-modal');
+const newPwInput            = document.getElementById('new-pw-input');
+const newPwConfirmInput     = document.getElementById('new-pw-confirm-input');
+const closeChangePwModalBtn = document.getElementById('close-change-pw-modal-btn');
+const saveChangePwBtn       = document.getElementById('save-change-pw-btn');
 
 // 채팅 관련 요소들
 const chatHistory     = document.getElementById('chat-history');
@@ -101,7 +116,6 @@ authTabRegister?.addEventListener('click', () => {
     clearAuthMessages();
 });
 
-// Auth 메시지 박스 초기화 함수
 function clearAuthMessages() {
     authErrorBox.classList.add('hidden');
     authErrorBox.textContent = '';
@@ -109,14 +123,12 @@ function clearAuthMessages() {
     authSuccessBox.textContent = '';
 }
 
-// 오류 메시지 표시
 function showAuthError(msg) {
     authErrorBox.textContent = msg;
     authErrorBox.classList.remove('hidden');
     authSuccessBox.classList.add('hidden');
 }
 
-// 성공 메시지 표시
 function showAuthSuccess(msg) {
     authSuccessBox.textContent = msg;
     authSuccessBox.classList.remove('hidden');
@@ -131,7 +143,6 @@ async function showMainApp(user) {
 
     let userNickname = '';
 
-    // Supabase profiles 테이블에서 사용자 닉네임 불러오기
     if (supabaseClient && user) {
         try {
             const { data, error } = await supabaseClient
@@ -150,14 +161,12 @@ async function showMainApp(user) {
         }
     }
 
-    // 닉네임이 없거나 '사용자' 기본값인 경우
     if (!userNickname || userNickname === '사용자') {
         currentNickname = '사용자';
         updateUserDisplayInfo('사용자', user.email);
         
-        // 💡 닉네임 미설정 계정이므로 인앱 닉네임 설정 팝업 모달을 자동으로 띄웁니다!
         setTimeout(() => {
-            openNicknameModal(true); // mandatory = true
+            openNicknameModal(true);
         }, 500);
     } else {
         currentNickname = userNickname;
@@ -165,11 +174,9 @@ async function showMainApp(user) {
     }
 
     console.log('✅ 로그인 완료:', currentNickname, user.email);
-    // 로그인한 사람의 약물 보관함 데이터 불러오기
     fetchMedicinesFromSupabase();
 }
 
-// 상단 사용자 닉네임 및 이메일 표시 갱신 함수
 function updateUserDisplayInfo(nickname, email) {
     currentNickname = nickname;
     if (userEmailDisplay) {
@@ -183,10 +190,8 @@ function updateUserDisplayInfo(nickname, email) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  1-3. ✏️ 인앱 닉네임 설정 / 수정 팝업 모달 제어 로직
+//  1-3. ✏️ 닉네임 설정/수정 팝업 모달 제어 로직
 // ──────────────────────────────────────────────────────────
-
-// 닉네임 모달 열기
 function openNicknameModal(isMandatory = false) {
     if (!nicknameModal) return;
     nicknameModal.classList.remove('hidden');
@@ -196,28 +201,23 @@ function openNicknameModal(isMandatory = false) {
     }
 }
 
-// 닉네임 모달 닫기
 function closeNicknameModal() {
     if (!nicknameModal) return;
     nicknameModal.classList.add('hidden');
 }
 
-// 상단 [✏️ 닉네임 수정] 버튼 클릭 이벤트
 editNicknameBtn?.addEventListener('click', () => {
     openNicknameModal(false);
 });
 
-// 모달 [취소] 버튼 클릭 이벤트
 closeNicknameModalBtn?.addEventListener('click', () => {
     closeNicknameModal();
 });
 
-// 모달 [💾 저장하기] 버튼 클릭 이벤트
 saveNicknameModalBtn?.addEventListener('click', async () => {
     await handleSaveNickname();
 });
 
-// 엔터 키로 닉네임 저장 가능하도록 처리
 modalNicknameInput?.addEventListener('keydown', async (e) => {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -225,7 +225,6 @@ modalNicknameInput?.addEventListener('keydown', async (e) => {
     }
 });
 
-// 닉네임 Supabase 저장 및 화면 즉시 동기화 로직
 async function handleSaveNickname() {
     if (!modalNicknameInput) return;
     const newNickname = modalNicknameInput.value.trim();
@@ -244,7 +243,6 @@ async function handleSaveNickname() {
     saveNicknameModalBtn.textContent = '저장 중...';
 
     try {
-        // 1) Supabase profiles 테이블에 닉네임 업데이트 (upsert)
         const { error: profileError } = await supabaseClient
             .from('profiles')
             .upsert({
@@ -258,7 +256,6 @@ async function handleSaveNickname() {
             console.warn('profiles 테이블 업데이트 시도:', profileError.message);
         }
 
-        // 2) Supabase auth.user_metadata 메타데이터 업데이트
         const { error: authError } = await supabaseClient.auth.updateUser({
             data: { nickname: newNickname }
         });
@@ -267,7 +264,6 @@ async function handleSaveNickname() {
             console.warn('auth 메타데이터 업데이트 시도:', authError.message);
         }
 
-        // 3) 화면 UI 정보 즉시 갱신
         updateUserDisplayInfo(newNickname, currentUser.email);
         closeNicknameModal();
         alert(`✅ 닉네임이 '${newNickname}'(으)로 성공적으로 설정되었습니다!`);
@@ -276,6 +272,114 @@ async function handleSaveNickname() {
         alert(`❌ 닉네임 저장 중 오류가 발생했습니다: ${err.message}`);
     } finally {
         saveNicknameModalBtn.textContent = '💾 저장하기';
+    }
+}
+
+// ──────────────────────────────────────────────────────────
+//  1-4. 🔑 비밀번호 재설정 (로그인 전 이메일 발송) 제어 로직
+// ──────────────────────────────────────────────────────────
+forgotPwBtn?.addEventListener('click', () => {
+    if (resetPwModal) {
+        resetPwModal.classList.remove('hidden');
+        if (resetEmailInput && loginEmail) {
+            resetEmailInput.value = loginEmail.value.trim();
+        }
+        resetEmailInput?.focus();
+    }
+});
+
+closeResetPwModalBtn?.addEventListener('click', () => {
+    if (resetPwModal) resetPwModal.classList.add('hidden');
+});
+
+sendResetPwBtn?.addEventListener('click', async () => {
+    const email = resetEmailInput ? resetEmailInput.value.trim() : '';
+
+    if (!email) {
+        alert('가입하신 이메일 주소를 입력해주세요.');
+        resetEmailInput?.focus();
+        return;
+    }
+
+    sendResetPwBtn.textContent = '발송 중...';
+
+    try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.href
+        });
+
+        if (error) {
+            alert(`❌ 비밀번호 재설정 이메일 발송 실패: ${error.message}`);
+        } else {
+            alert(`📧 '${email}' 주소로 비밀번호 재설정 이메일을 발송했습니다!\n메일함을 확인하여 안내에 따라 재설정을 진행해 주세요.`);
+            if (resetPwModal) resetPwModal.classList.add('hidden');
+        }
+    } catch (err) {
+        alert(`❌ 오류 발생: ${err.message}`);
+    } finally {
+        sendResetPwBtn.textContent = '📧 재설정 메일 발송';
+    }
+});
+
+// ──────────────────────────────────────────────────────────
+//  1-5. 🔒 비밀번호 변경 (로그인 후 즉시 변경) 제어 로직
+// ──────────────────────────────────────────────────────────
+changePwBtn?.addEventListener('click', () => {
+    if (changePwModal) {
+        changePwModal.classList.remove('hidden');
+        if (newPwInput) newPwInput.value = '';
+        if (newPwConfirmInput) newPwConfirmInput.value = '';
+        newPwInput?.focus();
+    }
+});
+
+closeChangePwModalBtn?.addEventListener('click', () => {
+    if (changePwModal) changePwModal.classList.add('hidden');
+});
+
+saveChangePwBtn?.addEventListener('click', async () => {
+    await handleSaveChangePw();
+});
+
+async function handleSaveChangePw() {
+    const newPw = newPwInput ? newPwInput.value : '';
+    const confirmPw = newPwConfirmInput ? newPwConfirmInput.value : '';
+
+    if (!newPw) {
+        alert('새 비밀번호를 입력해주세요.');
+        newPwInput?.focus();
+        return;
+    }
+
+    if (newPw.length < 6) {
+        alert('비밀번호는 최소 6자 이상이어야 합니다.');
+        newPwInput?.focus();
+        return;
+    }
+
+    if (newPw !== confirmPw) {
+        alert('새 비밀번호와 재입력 비밀번호가 서로 일치하지 않습니다.');
+        newPwConfirmInput?.focus();
+        return;
+    }
+
+    saveChangePwBtn.textContent = '변경 중...';
+
+    try {
+        const { error } = await supabaseClient.auth.updateUser({
+            password: newPw
+        });
+
+        if (error) {
+            alert(`❌ 비밀번호 변경 실패: ${error.message}`);
+        } else {
+            alert('🔒 비밀번호가 성공적으로 변경되었습니다!\n다음 로그인부터는 새로운 비밀번호를 사용하세요.');
+            if (changePwModal) changePwModal.classList.add('hidden');
+        }
+    } catch (err) {
+        alert(`❌ 비밀번호 변경 오류: ${err.message}`);
+    } finally {
+        saveChangePwBtn.textContent = '🔒 비밀번호 변경';
     }
 }
 
@@ -433,7 +537,7 @@ logoutBtn?.addEventListener('click', async () => {
     console.log('🚪 로그아웃 완료 및 대화 내역 초기화 완료');
 });
 
-// 🔄 앱 시작 시: 브라우저/앱 접속 시 세션 초기화
+// 🔄 앱 시작 시 세션 초기화
 async function checkExistingSession() {
     if (!supabaseClient) {
         authScreen.classList.add('hidden');
@@ -1226,4 +1330,4 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
-console.log('✅ 실제 Gemini AI 연동 약물 분석 어시스턴트 및 인앱 닉네임 설정 준비 완료');
+console.log('✅ 실제 Gemini AI 연동 어시스턴트 및 비밀번호 재설정/변경 준비 완료');

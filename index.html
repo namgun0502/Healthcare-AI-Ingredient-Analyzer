@@ -56,6 +56,9 @@
                         <button type="button" class="pw-toggle-btn" data-target="login-password" title="비밀번호 표시/숨기기">👁️</button>
                     </div>
                 </div>
+                <div style="text-align:right;margin-top:0.3rem;margin-bottom:0.8rem;">
+                    <button type="button" id="forgot-pw-btn" class="text-link-btn">🔑 비밀번호를 잊으셨나요?</button>
+                </div>
                 <button type="submit" id="login-btn" class="auth-submit-btn">
                     <span id="login-btn-text">로그인 →</span>
                 </button>
@@ -64,8 +67,8 @@
             <!-- 회원가입 폼 (평소에는 숨김) -->
             <form id="register-form" class="auth-form hidden">
                 <div class="auth-input-group">
-                    <label class="auth-label">👤 닉네임</label>
-                    <input type="text" id="reg-nickname" class="auth-input" placeholder="예: 남건" required>
+                    <label class="auth-label">👤 닉네임 (선택)</label>
+                    <input type="text" id="reg-nickname" class="auth-input" placeholder="예: 남건">
                 </div>
                 <div class="auth-input-group">
                     <label class="auth-label">📧 이메일</label>
@@ -119,6 +122,8 @@
                 <span id="user-email-display" class="user-email-badge">👤 로딩 중...</span>
                 <!-- ✏️ 닉네임 수정 버튼 -->
                 <button id="edit-nickname-btn" class="secondary-btn-small" title="닉네임 변경하기">✏️ 닉네임 수정</button>
+                <!-- 🔒 비밀번호 변경 버튼 -->
+                <button id="change-pw-btn" class="secondary-btn-small" title="비밀번호 변경하기">🔒 비밀번호 변경</button>
                 <!-- 로그아웃 버튼 -->
                 <button id="logout-btn" class="logout-btn">🚪 로그아웃</button>
             </div>
@@ -287,6 +292,8 @@
             </div>
         </div>
 
+    </div>
+
     <!-- ✏️ 닉네임 설정/수정 팝업 모달 -->
     <div id="nickname-modal" class="modal-overlay hidden">
         <div class="modal-card">
@@ -296,6 +303,42 @@
             <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
                 <button id="close-nickname-modal-btn" class="secondary-btn">취소</button>
                 <button id="save-nickname-modal-btn" class="save-api-btn">💾 저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔑 비밀번호 재설정 (로그인 전) 팝업 모달 -->
+    <div id="reset-pw-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3>🔑 비밀번호 재설정 이메일 발송</h3>
+            <p style="font-size:0.85rem;color:#8b949e;margin-top:0.3rem;margin-bottom:1rem;">가입하신 이메일 주소를 입력하시면 재설정 링크를 보내드립니다.</p>
+            <input type="email" id="reset-email-input" class="form-control" placeholder="example@email.com" style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button id="close-reset-pw-modal-btn" class="secondary-btn">취소</button>
+                <button id="send-reset-pw-btn" class="save-api-btn">📧 재설정 메일 발송</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔒 인앱 비밀번호 변경 (로그인 후) 팝업 모달 -->
+    <div id="change-pw-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3>🔒 새 비밀번호 변경</h3>
+            <p style="font-size:0.85rem;color:#8b949e;margin-top:0.3rem;margin-bottom:1rem;">안전하게 사용하실 새 비밀번호(6자 이상)를 입력하세요.</p>
+            
+            <div class="pw-input-wrapper" style="margin-bottom:0.75rem;">
+                <input type="password" id="new-pw-input" class="form-control" placeholder="새 비밀번호 (6자 이상)" minlength="6">
+                <button type="button" class="pw-toggle-btn" data-target="new-pw-input" title="표시/숨기기">👁️</button>
+            </div>
+
+            <div class="pw-input-wrapper" style="margin-bottom:1rem;">
+                <input type="password" id="new-pw-confirm-input" class="form-control" placeholder="새 비밀번호 재입력">
+                <button type="button" class="pw-toggle-btn" data-target="new-pw-confirm-input" title="표시/숨기기">👁️</button>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button id="close-change-pw-modal-btn" class="secondary-btn">취소</button>
+                <button id="save-change-pw-btn" class="save-api-btn">🔒 비밀번호 변경</button>
             </div>
         </div>
     </div>
