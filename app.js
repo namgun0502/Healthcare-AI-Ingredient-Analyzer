@@ -13,7 +13,7 @@ const loginForm          = document.getElementById('login-form');
 const loginEmail         = document.getElementById('login-email');
 const loginPassword      = document.getElementById('login-password');
 const loginBtnText       = document.getElementById('login-btn-text');
-const forgotPwBtn        = document.getElementById('forgot-pw-btn'); // 🔑 비밀번호 찾기 버튼
+const forgotPwBtn        = document.getElementById('forgot-pw-btn');
 
 // 회원가입 폼 요소들
 const registerForm           = document.getElementById('register-form');
@@ -34,8 +34,8 @@ const authSuccessBox = document.getElementById('auth-success-box');
 // 로그아웃 버튼, 사용자 이메일 표시
 const logoutBtn         = document.getElementById('logout-btn');
 const userEmailDisplay  = document.getElementById('user-email-display');
-const editNicknameBtn   = document.getElementById('edit-nickname-btn'); // ✏️ 닉네임 수정 버튼
-const changePwBtn       = document.getElementById('change-pw-btn');     // 🔒 비밀번호 변경 버튼
+const editNicknameBtn   = document.getElementById('edit-nickname-btn');
+const changePwBtn       = document.getElementById('change-pw-btn');
 
 // 닉네임 설정/수정 모달 요소들
 const nicknameModal         = document.getElementById('nickname-modal');
@@ -91,7 +91,6 @@ if (window.supabase) {
     console.log('✅ Supabase DB + Auth 클라이언트 연결 성공!');
 }
 
-// 현재 로그인된 사용자 정보를 저장하는 변수
 let currentUser = null;
 let currentNickname = '사용자';
 
@@ -99,7 +98,6 @@ let currentNickname = '사용자';
 //  1-2. 🔐 Supabase Auth — 로그인/회원가입/로그아웃 로직
 // ──────────────────────────────────────────────────────────
 
-// [로그인 탭] ↔ [회원가입 탭] 전환
 authTabLogin?.addEventListener('click', () => {
     authTabLogin.classList.add('active');
     authTabRegister.classList.remove('active');
@@ -135,11 +133,10 @@ function showAuthSuccess(msg) {
     authErrorBox.classList.add('hidden');
 }
 
-// 로그인 성공 후 메인 앱 화면으로 전환
 async function showMainApp(user) {
     currentUser = user;
-    authScreen.classList.add('hidden');   // 로그인 화면 숨기기
-    mainApp.classList.remove('hidden');   // 메인 앱 보이기
+    authScreen.classList.add('hidden');
+    mainApp.classList.remove('hidden');
 
     let userNickname = '';
 
@@ -982,7 +979,7 @@ window.confirmDeleteDbItem = async function(id, name) {
 fetchMedicinesFromSupabase();
 
 // ──────────────────────────────────────────────────────────
-//  6. 사진 첨부 기능
+//  6. 사진 첨부 기능 & 🖱️ 드래그 앤 드롭(Drag & Drop) 처리
 // ──────────────────────────────────────────────────────────
 photoUploadBtn?.addEventListener('click', () => imageUploadInput?.click());
 
@@ -1002,6 +999,46 @@ removeImgBtn?.addEventListener('click', () => {
     if (imageUploadInput) imageUploadInput.value = '';
     imagePreviewContainer?.classList.add('hidden');
 });
+
+// 🖱️ 챗봇 질문창 영역 이미지 파일 Drag & Drop 자동 등록
+const inputBoxWrapper = document.querySelector('.input-box-wrapper');
+
+if (inputBoxWrapper) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+        inputBoxWrapper.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            inputBoxWrapper.classList.add('drag-over');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        inputBoxWrapper.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            inputBoxWrapper.classList.remove('drag-over');
+        }, false);
+    });
+
+    inputBoxWrapper.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+
+        if (files && files.length > 0) {
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                selectedImageFile = file;
+                if (previewFilename) previewFilename.textContent = selectedImageFile.name;
+                imagePreviewContainer?.classList.remove('hidden');
+                if (!chatInput.value.trim()) {
+                    chatInput.value = `이 약/영양제 사진의 성분과 복용법을 분석하고, 내 보관함 약물들과의 상호작용 위험을 알려줘.`;
+                }
+            } else {
+                alert('이미지 파일(jpg, png 등)만 드래그하여 첨부하실 수 있습니다.');
+            }
+        }
+    });
+}
 
 // ──────────────────────────────────────────────────────────
 //  7. 전역 버튼 클릭 이벤트 (비밀번호 토글, 칩 버튼)
@@ -1330,4 +1367,4 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
-console.log('✅ 실제 Gemini AI 연동 어시스턴트 및 비밀번호 재설정/변경 준비 완료');
+console.log('✅ 실제 Gemini AI 연동 어시스턴트 및 드래그 앤 드롭 사진 업로드 준비 완료');

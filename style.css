@@ -1237,3 +1237,11 @@ code {
     color: #93c5fd;
 }
 
+/* 이미지 파일 드래그 앤 드롭 하이라이트 효과 */
+.input-box-wrapper.drag-over {
+    border-color: #34d399 !important;
+    background-color: rgba(52, 211, 153, 0.12) !important;
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.4) !important;
+}
+
+
