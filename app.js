@@ -369,7 +369,7 @@ async function handleSendMessage() {
         appendErrorMessage(`AI 분석 중 오류가 발생했습니다: ${err.message}`);
     }
 
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    scrollToBottom();
 }
 
 // ──────────────────────────────────────────────────────────
@@ -457,12 +457,19 @@ function localKnowledgeBase(userText, cabinetItems) {
 // ──────────────────────────────────────────────────────────
 //  11. 채팅 말풍선 생성 함수들
 // ──────────────────────────────────────────────────────────
+function scrollToBottom() {
+    chatHistory.scrollTo({
+        top: chatHistory.scrollHeight,
+        behavior: 'smooth'
+    });
+}
+
 function appendUserMessage(text) {
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble user-bubble';
     bubble.innerHTML = `<div class="avatar">👤</div><div class="bubble-content"><p>${escapeHtml(text)}</p></div>`;
     chatHistory.appendChild(bubble);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    scrollToBottom();
 }
 
 function appendAiLoadingMessage() {
@@ -474,7 +481,7 @@ function appendAiLoadingMessage() {
             <p style="color:#38bdf8;">🔬 Gemini AI가 실제 성분 DB를 분석하고 보관함 약물들과 대조 중입니다<span class="loading-dots"></span></p>
         </div>`;
     chatHistory.appendChild(bubble);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    scrollToBottom();
     return bubble;
 }
 
@@ -543,7 +550,7 @@ function appendAiResponseMessage(res) {
         </div>`;
 
     chatHistory.appendChild(bubble);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    scrollToBottom();
 }
 
 // ──────────────────────────────────────────────────────────
