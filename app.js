@@ -129,10 +129,11 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
     // Gemini에게 역할 및 출력 형식을 정확히 지정하는 '시스템 지시문' 입니다.
     const systemPrompt = `당신은 한국의 의약품 및 건강기능식품(영양제) 전문 AI 성분 분석 어시스턴트입니다.
 사용자가 약품명, 영양제명, 또는 성분표를 제공하면 다음을 수행하세요:
-1. 해당 제품의 실제 주성분, 함량, 효능/효과를 정확히 설명하세요.
-2. 사용자가 제공한 [내 약물 보관함] 목록에 있는 복용 중인 약들과의 상호작용 위험(성분 중복 오남용, 약효 저해, 흡수 방해 등)을 분석하세요.
-3. 일일 권장량 초과 시 WARNING, 주의 시 CAUTION, 안전 시 SAFE로 분류하세요.
-4. 진단이 아닌 참고용 정보임을 명시하고, 정확한 상담은 의사/약사를 안내하세요.
+1. 해당 제품의 **모든 주성분 및 부성분, 첨가제/보조 성분까지 생략 없이 전체 목록**을 찾아 함량과 함께 상세히 추출하세요. (예: 게보린의 경우 아세트아미노펜, 이소프로필안티피린, 카페인무수물 등 모든 성분 포함)
+2. 각 성분별 주요 역할(효능/작용)을 설명하세요.
+3. 사용자가 제공한 [내 약물 보관함] 목록에 있는 복용 중인 약들과의 상호작용 위험(성분 중복 오남용, 약효 저해, 흡수 방해 등)을 대조 분석하세요.
+4. 일일 권장량 초과 시 WARNING, 주의 시 CAUTION, 안전 시 SAFE로 분류하세요.
+5. 진단이 아닌 참고용 정보임을 명시하고, 정확한 상담은 의사/약사를 안내하세요.
 
 반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):
 {
@@ -140,7 +141,7 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
     "product_name": "제품명",
     "type": "의약품 또는 건강기능식품",
     "main_ingredients": [
-      {"name": "성분명", "amount": "함량"}
+      {"name": "성분명", "amount": "함량", "role": "성분 역할/효능"}
     ],
     "confidence_score": "HIGH 또는 MEDIUM 또는 LOW"
   },
@@ -504,13 +505,23 @@ function appendAiResponseMessage(res) {
 
     const prodName = res.identification?.product_name || '분석 결과';
     const prodType = res.identification?.type || '';
-    const ingredients = res.identification?.main_ingredients?.map(i => `<span style="background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2);border-radius:4px;padding:0.1rem 0.4rem;font-size:0.8rem;margin:0.1rem;display:inline-block;">${i.name} ${i.amount}</span>`).join('') || '정보 없음';
+    
+    // 주성분 및 모든 부성분을 성분명, 함량, 역할과 함께 나열
+    const ingredientsHtml = res.identification?.main_ingredients?.map(i => `
+        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(56,189,248,0.25);border-radius:6px;padding:0.4rem 0.6rem;margin-bottom:0.3rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="color:#38bdf8;font-weight:600;font-size:0.85rem;">🧪 ${escapeHtml(i.name)}</span>
+                <span style="background:rgba(56,189,248,0.15);color:#7dd3fc;border-radius:4px;padding:0.05rem 0.4rem;font-size:0.75rem;font-weight:600;">${escapeHtml(i.amount || '함량 정보 없음')}</span>
+            </div>
+            ${i.role ? `<div style="font-size:0.78rem;color:#94a3b8;margin-top:0.25rem;">💡 ${escapeHtml(i.role)}</div>` : ''}
+        </div>
+    `).join('') || '<span style="color:#8b949e;font-size:0.8rem;">성분 정보 없음</span>';
 
     bubble.innerHTML = `
         <div class="avatar">✨</div>
         <div class="bubble-content">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-                <strong>🔬 AI 실제 성분 & 대조 분석 결과</strong>
+                <strong>🔬 AI 전체 성분 & 대조 분석 결과</strong>
                 <span class="risk-badge-inline ${badgeClass}">${riskLevel}</span>
             </div>
 
@@ -519,9 +530,9 @@ function appendAiResponseMessage(res) {
             ${warningHtml}
 
             <div class="report-card-inline" style="margin-top:0.75rem;">
-                <p style="margin-bottom:0.3rem;"><strong>📦 제품명:</strong> ${prodName} <span style="color:#8b949e;font-size:0.8rem;">(${prodType})</span></p>
-                <p style="margin-bottom:0.5rem;"><strong>🧪 주성분:</strong></p>
-                <div style="display:flex;flex-wrap:wrap;gap:0.2rem;margin-bottom:0.5rem;">${ingredients}</div>
+                <p style="margin-bottom:0.5rem;"><strong>📦 제품명:</strong> ${prodName} <span style="color:#8b949e;font-size:0.8rem;">(${prodType})</span></p>
+                <p style="margin-bottom:0.4rem;"><strong>🧪 제품 함유 전체 성분 목록:</strong></p>
+                <div style="margin-bottom:0.75rem;">${ingredientsHtml}</div>
                 <p style="margin-bottom:0.3rem;"><strong>📋 복용 가이드:</strong> ${res.dosage_guide?.recommended_daily || '-'}</p>
                 ${res.dosage_guide?.precautions?.length > 0 ? `<ul style="padding-left:1.1rem;font-size:0.82rem;color:#94a3b8;margin-top:0.2rem;">${res.dosage_guide.precautions.map(p => `<li>${p}</li>`).join('')}</ul>` : ''}
                 
