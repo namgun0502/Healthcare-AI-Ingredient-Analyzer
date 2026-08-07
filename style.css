@@ -1,24 +1,23 @@
 /* 
-  style.css - 의약품 & 영양제 상호작용 위험 분석 어시스턴트 디자인 스타일시트
-  글래스모피즘(Glassmorphism), 네온 시안 & 엠버 포인트, 입체적인 네온 인터랙션 효과 적용
-  남건이 코드를 쉽게 읽을 수 있도록 한글 주석을 상세하게 유지하였습니다.
+  style.css - Google AI Studio 스타일 대화형 헬스케어 어시스턴트 레이아웃
+  남건이 이해하기 쉽도록 깔끔하고 현대적인 다크 모드 2-Pane 레이아웃으로 스타일링했습니다.
 */
 
 :root {
-    --bg-color: #0b0f19;          /* 깊고 신비로운 차콜 다크 네이비 배경색 */
-    --card-bg: rgba(19, 27, 46, 0.75); /* 글래스모피즘 분위기의 반투명 카드 배경 */
-    --card-border: rgba(255, 255, 255, 0.12); /* 은은한 네온 빛 테두리 선 */
+    --bg-main: #0d1117;          /* AI Studio 깊은 다크 배경 */
+    --pane-bg: #161b22;          /* 대화 및 패널 박스 배경 */
+    --sidebar-bg: #0d1117;       /* 우측 사이드바 배경 */
+    --border-color: #30363d;     /* 깔끔한 테두리 구획선 */
     
-    --text-primary: #f8fafc;      /* 주 텍스트 (눈이 편안한 선명한 흰색) */
-    --text-secondary: #94a3b8;    /* 보조 설명 텍스트 (은은한 회색) */
+    --text-main: #f0f6fc;        /* 선명한 텍스트 */
+    --text-muted: #8b949e;       /* 보조 텍스트 */
     
-    --primary-color: #06b6d4;     /* 네온 시안 (메인 헬스케어 포인트 컬러) */
-    --primary-hover: #0891b2;     /* 마우스 호버 시 진한 시안 */
-    --primary-glow: rgba(6, 182, 212, 0.4); /* 버튼 및 헤더 네온 효과 */
+    --accent-blue: #38bdf8;      /* 스튜디오 포인트 블루 */
+    --accent-glow: rgba(56, 189, 248, 0.25);
     
-    --safe-color: #10b981;        /* SAFE (안전) 네온 에메랄드 */
-    --caution-color: #f59e0b;     /* CAUTION (주의) 네온 골드 엠버 */
-    --warning-color: #ef4444;     /* WARNING (경고) 네온 레드 */
+    --safe-color: #34d399;       /* SAFE 초록 */
+    --caution-color: #fbbf24;    /* CAUTION 노랑 */
+    --warning-color: #f87171;    /* WARNING 빨강 */
 
     --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -30,377 +29,350 @@
 }
 
 body {
-    background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0b0f19 75%);
-    color: var(--text-primary);
+    background-color: var(--bg-main);
+    color: var(--text-main);
     font-family: var(--font-family);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 2.5rem 1rem;
-    position: relative;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* 은은한 배경 오로라 빛 애니메이션 효과 추가 */
-body::before {
-    content: '';
-    position: absolute;
-    top: -100px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, rgba(239, 68, 68, 0.05) 50%, transparent 70%);
-    filter: blur(60px);
-    z-index: 0;
-    pointer-events: none;
-}
-
-.app-container {
-    width: 100%;
-    max-width: 720px; /* 더 시원하고 압도적인 리포트 뷰 */
+/* 전체 AI Studio 컨테이너 */
+.studio-app {
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
-    z-index: 1;
+    height: 100vh;
 }
 
-/* 1. 헤더 디자인 고도화 */
-.app-header {
-    text-align: center;
-    padding: 0.5rem 0;
+/* 상단 네비게이션 바 */
+.studio-navbar {
+    height: 54px;
+    background-color: #161b22;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1.25rem;
+    z-index: 10;
 }
 
-.badge-tag {
-    display: inline-block;
-    background: rgba(6, 182, 212, 0.12);
-    color: #22d3ee;
-    font-size: 0.75rem;
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.sparkle-icon {
+    font-size: 1.2rem;
+}
+
+.brand-title {
+    font-size: 1.05rem;
     font-weight: 700;
-    padding: 0.3rem 0.9rem;
-    border-radius: 9999px;
-    border: 1px solid rgba(6, 182, 212, 0.3);
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
-}
-
-.app-header h1 {
-    font-size: 2.1rem;
-    font-weight: 800;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #ffffff 30%, #38bdf8 70%, #818cf8 100%);
+    background: linear-gradient(135deg, #ffffff, #38bdf8);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    letter-spacing: -0.02em;
 }
 
-.app-header p {
-    color: var(--text-secondary);
-    font-size: 0.95rem;
-    line-height: 1.5;
-}
-
-.app-header p strong {
-    color: #e2e8f0;
-    border-bottom: 1.5px solid var(--primary-color);
-}
-
-/* 2. 현대적인 글래스모피즘 카드 스타일 */
-.card {
-    background: var(--card-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--card-border);
-    border-radius: 20px;
-    padding: 1.75rem;
-    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 1.4rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.card:hover {
-    border-color: rgba(255, 255, 255, 0.18);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
-                0 0 15px rgba(6, 182, 212, 0.1);
-}
-
-.card h2 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #f8fafc;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-/* 폼 디자인 개선 */
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group label {
-    font-size: 0.88rem;
+.version-tag {
+    font-size: 0.7rem;
+    background-color: rgba(56, 189, 248, 0.12);
+    color: var(--accent-blue);
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
     font-weight: 600;
-    color: #cbd5e1;
 }
 
-.form-control {
-    background-color: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    padding: 0.85rem 1rem;
-    color: var(--text-primary);
-    font-size: 0.92rem;
-    font-family: inherit;
-    transition: all 0.25s ease;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.2);
-    background-color: rgba(15, 23, 42, 0.95);
-}
-
-select.form-control {
-    cursor: pointer;
-}
-
-/* 세련된 메인 버튼 스타일 */
-.primary-btn {
-    background: linear-gradient(135deg, #06b6d4, #0284c7);
-    color: #ffffff;
-    border: none;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 20px -4px var(--primary-glow);
+.status-indicator {
+    font-size: 0.78rem;
+    color: #34d399;
     display: flex;
-    justify-content: center;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
-.primary-btn:hover {
-    background: linear-gradient(135deg, #0891b2, #0369a1);
-    transform: translateY(-3px) scale(1.01);
-    box-shadow: 0 12px 25px -2px rgba(6, 182, 212, 0.5);
+.dot {
+    width: 7px;
+    height: 7px;
+    background-color: #34d399;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #34d399;
 }
 
-.primary-btn:active {
-    transform: translateY(-1px);
+/* 메인 2-Pane 워크스페이스 */
+.studio-workspace {
+    display: grid;
+    grid-template-columns: 1fr 340px; /* 대화창 1, 사이드바 340px */
+    flex: 1;
+    height: calc(100vh - 54px);
+    overflow: hidden;
 }
 
-.secondary-btn {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: #e2e8f0;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+/* 좌측 대화창 (Chat Pane) */
+.chat-pane {
+    display: flex;
+    flex-direction: column;
+    background-color: #0d1117;
+    border-right: 1px solid var(--border-color);
+    height: 100%;
+}
+
+.chat-history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* 메시지 말풍선 스타일 */
+.message-bubble {
+    display: flex;
+    gap: 0.85rem;
+    max-width: 90%;
+}
+
+.message-bubble.user-bubble {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
-    padding: 0.4rem 0.85rem;
-    font-size: 0.8rem;
-    font-weight: 600;
+    background-color: #21262d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.user-bubble .avatar {
+    background-color: #1f6feb;
+    color: #ffffff;
+}
+
+.bubble-content {
+    background-color: #161b22;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+    font-size: 0.93rem;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.user-bubble .bubble-content {
+    background-color: #1f6feb;
+    border-color: #388bfd;
+    color: #ffffff;
+}
+
+.bubble-content h3 {
+    font-size: 1.05rem;
+    margin-bottom: 0.4rem;
+    color: #ffffff;
+}
+
+/* 샘플 칩버튼 스타일 */
+.sample-chips {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.chip-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    width: 100%;
+    margin-bottom: 0.2rem;
+}
+
+.chip-btn {
+    background-color: #21262d;
+    color: #c9d1d9;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.secondary-btn:hover {
-    background-color: rgba(255, 255, 255, 0.18);
-    border-color: rgba(255, 255, 255, 0.3);
+.chip-btn:hover {
+    background-color: #30363d;
+    border-color: var(--accent-blue);
     color: #ffffff;
 }
 
-/* 3. 분석 결과 카드 디자인 튜닝 */
-.hidden {
-    display: none !important;
+/* 하단 챗 입력창 */
+.chat-input-container {
+    padding: 1rem 2rem 1.25rem 2rem;
+    background-color: #0d1117;
 }
 
-.result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    padding-bottom: 0.75rem;
-}
-
-.risk-badge {
-    padding: 0.4rem 1.1rem;
-    border-radius: 9999px;
-    font-size: 0.85rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.badge-safe {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: #34d399;
-    border: 1px solid var(--safe-color);
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
-}
-
-.badge-caution {
-    background-color: rgba(245, 158, 11, 0.15);
-    color: #fbbf24;
-    border: 1px solid var(--caution-color);
-    box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
-}
-
-.badge-warning {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
-    border: 1px solid var(--warning-color);
-    box-shadow: 0 0 16px rgba(239, 68, 68, 0.4);
-    animation: pulse 1.6s infinite ease-in-out;
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.04); opacity: 0.85; }
-}
-
-.summary-box {
-    background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(15, 23, 42, 0.4));
-    padding: 1.15rem;
-    border-radius: 12px;
-    font-size: 0.98rem;
-    line-height: 1.65;
-    border-left: 4px solid var(--primary-color);
-    color: #f1f5f9;
-}
-
-/* 경고 박스 글래스 네온 스타일 */
-.warning-alert-box {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(127, 29, 29, 0.3));
-    border: 1.5px solid var(--warning-color);
+.input-box-wrapper {
+    background-color: #161b22;
+    border: 1px solid var(--border-color);
     border-radius: 14px;
-    padding: 1.15rem;
-    display: flex;
-    gap: 0.85rem;
-    align-items: flex-start;
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
-}
-
-.alert-icon {
-    font-size: 1.7rem;
-    line-height: 1;
-}
-
-.alert-content strong {
-    color: #fca5a5;
-    font-size: 1rem;
-    display: block;
-    margin-bottom: 0.4rem;
-}
-
-.alert-content ul {
-    padding-left: 1.2rem;
-    font-size: 0.9rem;
-    color: #fecdd3;
-    line-height: 1.5;
-}
-
-/* 정보 그리드 */
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 0.85rem;
-    background-color: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 1rem;
-    border-radius: 12px;
-}
-
-.info-item {
-    font-size: 0.88rem;
-}
-
-.info-label {
-    color: var(--text-secondary);
-    margin-right: 0.4rem;
-}
-
-.info-value {
-    font-weight: 700;
-    color: #f8fafc;
-}
-
-.ingredients-box h3, .dosage-box h3 {
-    font-size: 1rem;
-    margin-bottom: 0.6rem;
-    color: #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.ingredients-list, .precautions-list {
-    padding-left: 1.3rem;
-    font-size: 0.9rem;
-    color: #cbd5e1;
+    padding: 0.6rem 0.85rem;
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-box-wrapper:focus-within {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+textarea#chat-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-main);
+    font-size: 0.93rem;
+    font-family: inherit;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+}
+
+.input-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.send-btn {
+    background: linear-gradient(135deg, #1f6feb, #238636);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
     gap: 0.4rem;
-    line-height: 1.5;
+    transition: transform 0.2s ease;
 }
 
-/* JSON 출력 코드 박스 */
-.json-box {
-    background-color: #030712;
+.send-btn:hover {
+    transform: scale(1.03);
+}
+
+/* 우측 사이드바 패널 */
+.sidebar-pane {
+    background-color: var(--sidebar-bg);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+}
+
+.sidebar-card {
+    background-color: #161b22;
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }
 
-.json-header {
-    background-color: #0b1329;
-    padding: 0.6rem 1.1rem;
+.card-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #c9d1d9;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-pre {
-    padding: 1.1rem;
-    overflow-x: auto;
-    max-height: 280px;
+.form-control {
+    background-color: #0d1117;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-family: inherit;
+    width: 100%;
+}
+
+.help-text {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.json-sidebar-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.json-sidebar-card pre {
+    background-color: #0d1117;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.75rem;
+    flex: 1;
+    overflow: auto;
+    max-height: 380px;
 }
 
 code {
-    font-family: 'Consolas', 'Courier New', monospace;
-    font-size: 0.83rem;
-    color: #34d399;
-    line-height: 1.5;
-}
-
-.disclaimer-box {
+    font-family: 'Consolas', monospace;
     font-size: 0.78rem;
-    color: #64748b;
-    text-align: center;
-    line-height: 1.5;
-    background-color: rgba(255, 255, 255, 0.02);
-    padding: 0.75rem;
-    border-radius: 8px;
+    color: #34d399;
 }
 
-.app-footer {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 0.82rem;
-    margin-top: 1.2rem;
+.secondary-btn {
+    background-color: #21262d;
+    color: #c9d1d9;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+    cursor: pointer;
 }
+
+.disclaimer-card {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* 분석 리포트 카드 내 요소 (대화창에 표시됨) */
+.report-card-inline {
+    background-color: #0d1117;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.risk-badge-inline {
+    display: inline-block;
+    padding: 0.2rem 0.64rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.badge-safe { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid #34d399; }
+.badge-caution { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid #fbbf24; }
+.badge-warning { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
