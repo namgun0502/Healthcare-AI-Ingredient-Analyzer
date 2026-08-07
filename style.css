@@ -114,6 +114,7 @@ body {
     background-color: #0d1117;
     border-right: 1px solid var(--border-color);
     height: 100%;
+    overflow: hidden;
 }
 
 .chat-history {
@@ -126,22 +127,30 @@ body {
     scroll-behavior: smooth;
 }
 
-/* 커스텀 내온 스크롤바 (채팅 영역) */
-.chat-history::-webkit-scrollbar {
-    width: 8px;
+/* 커스텀 스크롤바 (위아래 스크롤을 시각적으로 선명하고 세련되게) */
+.chat-history::-webkit-scrollbar,
+.sidebar-pane::-webkit-scrollbar,
+.cabinet-manage-container::-webkit-scrollbar {
+    width: 10px;
 }
 
-.chat-history::-webkit-scrollbar-track {
-    background: rgba(13, 17, 23, 0.6);
+.chat-history::-webkit-scrollbar-track,
+.sidebar-pane::-webkit-scrollbar-track,
+.cabinet-manage-container::-webkit-scrollbar-track {
+    background: rgba(13, 17, 23, 0.8);
 }
 
-.chat-history::-webkit-scrollbar-thumb {
+.chat-history::-webkit-scrollbar-thumb,
+.sidebar-pane::-webkit-scrollbar-thumb,
+.cabinet-manage-container::-webkit-scrollbar-thumb {
     background: #30363d;
-    border-radius: 4px;
+    border-radius: 6px;
     border: 2px solid #0d1117;
 }
 
-.chat-history::-webkit-scrollbar-thumb:hover {
+.chat-history::-webkit-scrollbar-thumb:hover,
+.sidebar-pane::-webkit-scrollbar-thumb:hover,
+.cabinet-manage-container::-webkit-scrollbar-thumb:hover {
     background: #38bdf8;
 }
 
