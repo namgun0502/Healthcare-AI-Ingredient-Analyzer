@@ -115,8 +115,10 @@
 
             <div class="nav-actions">
                 <span id="ai-status" class="status-indicator"><span class="dot dot-gray"></span> API 키 미설정</span>
-                <!-- 로그인된 사용자 이메일 표시 -->
+                <!-- 로그인된 사용자 닉네임 & 이메일 표시 -->
                 <span id="user-email-display" class="user-email-badge">👤 로딩 중...</span>
+                <!-- ✏️ 닉네임 수정 버튼 -->
+                <button id="edit-nickname-btn" class="secondary-btn-small" title="닉네임 변경하기">✏️ 닉네임 수정</button>
                 <!-- 로그아웃 버튼 -->
                 <button id="logout-btn" class="logout-btn">🚪 로그아웃</button>
             </div>
@@ -285,6 +287,17 @@
             </div>
         </div>
 
+    <!-- ✏️ 닉네임 설정/수정 팝업 모달 -->
+    <div id="nickname-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <h3>✏️ 닉네임 설정 / 변경</h3>
+            <p style="font-size:0.85rem;color:#8b949e;margin-top:0.3rem;margin-bottom:1rem;">사용하실 멋진 닉네임을 입력해주세요!</p>
+            <input type="text" id="modal-nickname-input" class="form-control" placeholder="예: 남건" style="margin-bottom:1rem;">
+            <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+                <button id="close-nickname-modal-btn" class="secondary-btn">취소</button>
+                <button id="save-nickname-modal-btn" class="save-api-btn">💾 저장하기</button>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

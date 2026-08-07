@@ -33,6 +33,13 @@ const authSuccessBox = document.getElementById('auth-success-box');
 // 로그아웃 버튼, 사용자 이메일 표시
 const logoutBtn         = document.getElementById('logout-btn');
 const userEmailDisplay  = document.getElementById('user-email-display');
+const editNicknameBtn   = document.getElementById('edit-nickname-btn'); // ✏️ 닉네임 수정 버튼
+
+// 닉네임 설정/수정 모달 요소들
+const nicknameModal         = document.getElementById('nickname-modal');
+const modalNicknameInput    = document.getElementById('modal-nickname-input');
+const closeNicknameModalBtn = document.getElementById('close-nickname-modal-btn');
+const saveNicknameModalBtn  = document.getElementById('save-nickname-modal-btn');
 
 // 채팅 관련 요소들
 const chatHistory     = document.getElementById('chat-history');
@@ -71,6 +78,7 @@ if (window.supabase) {
 
 // 현재 로그인된 사용자 정보를 저장하는 변수
 let currentUser = null;
+let currentNickname = '사용자';
 
 // ──────────────────────────────────────────────────────────
 //  1-2. 🔐 Supabase Auth — 로그인/회원가입/로그아웃 로직
@@ -121,7 +129,7 @@ async function showMainApp(user) {
     authScreen.classList.add('hidden');   // 로그인 화면 숨기기
     mainApp.classList.remove('hidden');   // 메인 앱 보이기
 
-    let userNickname = '사용자';
+    let userNickname = '';
 
     // Supabase profiles 테이블에서 사용자 닉네임 불러오기
     if (supabaseClient && user) {
@@ -132,35 +140,148 @@ async function showMainApp(user) {
                 .eq('id', user.id)
                 .single();
 
-            if (data && data.nickname) {
-                userNickname = data.nickname;
-            } else if (user.user_metadata && user.user_metadata.nickname) {
-                userNickname = user.user_metadata.nickname;
+            if (data && data.nickname && data.nickname.trim() !== '') {
+                userNickname = data.nickname.trim();
+            } else if (user.user_metadata && user.user_metadata.nickname && user.user_metadata.nickname.trim() !== '') {
+                userNickname = user.user_metadata.nickname.trim();
             }
         } catch (e) {
             console.warn('프로필 닉네임 조회 실패:', e);
         }
     }
 
-    // 상단에 현재 닉네임과 이메일 표시
-    if (userEmailDisplay) {
-        userEmailDisplay.textContent = `👤 ${userNickname} (${user.email})`;
+    // 닉네임이 없거나 '사용자' 기본값인 경우
+    if (!userNickname || userNickname === '사용자') {
+        currentNickname = '사용자';
+        updateUserDisplayInfo('사용자', user.email);
+        
+        // 💡 닉네임 미설정 계정이므로 인앱 닉네임 설정 팝업 모달을 자동으로 띄웁니다!
+        setTimeout(() => {
+            openNicknameModal(true); // mandatory = true
+        }, 500);
+    } else {
+        currentNickname = userNickname;
+        updateUserDisplayInfo(userNickname, user.email);
     }
 
-    // 보관함 정보 업데이트
-    const supabaseUserInfo = document.getElementById('supabase-user-info');
-    if (supabaseUserInfo) {
-        supabaseUserInfo.textContent = `${userNickname}님(${user.email}) 계정의 약물 데이터가 Supabase에 실시간 저장됩니다.`;
-    }
-
-    console.log('✅ 로그인 완료:', userNickname, user.email);
+    console.log('✅ 로그인 완료:', currentNickname, user.email);
     // 로그인한 사람의 약물 보관함 데이터 불러오기
     fetchMedicinesFromSupabase();
 }
 
+// 상단 사용자 닉네임 및 이메일 표시 갱신 함수
+function updateUserDisplayInfo(nickname, email) {
+    currentNickname = nickname;
+    if (userEmailDisplay) {
+        userEmailDisplay.textContent = `👤 ${nickname} (${email})`;
+    }
+
+    const supabaseUserInfo = document.getElementById('supabase-user-info');
+    if (supabaseUserInfo) {
+        supabaseUserInfo.textContent = `${nickname}님(${email}) 계정의 약물 데이터가 Supabase에 실시간 저장됩니다.`;
+    }
+}
+
+// ──────────────────────────────────────────────────────────
+//  1-3. ✏️ 인앱 닉네임 설정 / 수정 팝업 모달 제어 로직
+// ──────────────────────────────────────────────────────────
+
+// 닉네임 모달 열기
+function openNicknameModal(isMandatory = false) {
+    if (!nicknameModal) return;
+    nicknameModal.classList.remove('hidden');
+    if (modalNicknameInput) {
+        modalNicknameInput.value = (currentNickname && currentNickname !== '사용자') ? currentNickname : '';
+        modalNicknameInput.focus();
+    }
+}
+
+// 닉네임 모달 닫기
+function closeNicknameModal() {
+    if (!nicknameModal) return;
+    nicknameModal.classList.add('hidden');
+}
+
+// 상단 [✏️ 닉네임 수정] 버튼 클릭 이벤트
+editNicknameBtn?.addEventListener('click', () => {
+    openNicknameModal(false);
+});
+
+// 모달 [취소] 버튼 클릭 이벤트
+closeNicknameModalBtn?.addEventListener('click', () => {
+    closeNicknameModal();
+});
+
+// 모달 [💾 저장하기] 버튼 클릭 이벤트
+saveNicknameModalBtn?.addEventListener('click', async () => {
+    await handleSaveNickname();
+});
+
+// 엔터 키로 닉네임 저장 가능하도록 처리
+modalNicknameInput?.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        await handleSaveNickname();
+    }
+});
+
+// 닉네임 Supabase 저장 및 화면 즉시 동기화 로직
+async function handleSaveNickname() {
+    if (!modalNicknameInput) return;
+    const newNickname = modalNicknameInput.value.trim();
+
+    if (!newNickname) {
+        alert('사용하실 닉네임을 입력해주세요.');
+        modalNicknameInput.focus();
+        return;
+    }
+
+    if (!currentUser || !supabaseClient) {
+        alert('로그인 세션이 유효하지 않습니다.');
+        return;
+    }
+
+    saveNicknameModalBtn.textContent = '저장 중...';
+
+    try {
+        // 1) Supabase profiles 테이블에 닉네임 업데이트 (upsert)
+        const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .upsert({
+                id: currentUser.id,
+                email: currentUser.email,
+                nickname: newNickname,
+                updated_at: new Date().toISOString()
+            });
+
+        if (profileError) {
+            console.warn('profiles 테이블 업데이트 시도:', profileError.message);
+        }
+
+        // 2) Supabase auth.user_metadata 메타데이터 업데이트
+        const { error: authError } = await supabaseClient.auth.updateUser({
+            data: { nickname: newNickname }
+        });
+
+        if (authError) {
+            console.warn('auth 메타데이터 업데이트 시도:', authError.message);
+        }
+
+        // 3) 화면 UI 정보 즉시 갱신
+        updateUserDisplayInfo(newNickname, currentUser.email);
+        closeNicknameModal();
+        alert(`✅ 닉네임이 '${newNickname}'(으)로 성공적으로 설정되었습니다!`);
+
+    } catch (err) {
+        alert(`❌ 닉네임 저장 중 오류가 발생했습니다: ${err.message}`);
+    } finally {
+        saveNicknameModalBtn.textContent = '💾 저장하기';
+    }
+}
+
 // 📧 로그인 폼 제출
 loginForm?.addEventListener('submit', async (e) => {
-    e.preventDefault(); // 기본 폼 제출 동작 방지
+    e.preventDefault();
     clearAuthMessages();
 
     const email    = loginEmail.value.trim();
@@ -171,7 +292,6 @@ loginForm?.addEventListener('submit', async (e) => {
         return;
     }
 
-    // 버튼 로딩 상태로 변경
     if (loginBtnText) loginBtnText.textContent = '로그인 중...';
 
     try {
@@ -181,7 +301,6 @@ loginForm?.addEventListener('submit', async (e) => {
         });
 
         if (error) {
-            // Supabase 오류 메시지를 한국어로 변환
             if (error.message.includes('Invalid login credentials')) {
                 showAuthError('❌ 이메일 또는 비밀번호가 일치하지 않습니다.');
             } else if (error.message.includes('Email not confirmed')) {
@@ -204,14 +323,13 @@ registerForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearAuthMessages();
 
-    const nickname = regNickname ? regNickname.value.trim() : '사용자';
+    const nickname = regNickname ? regNickname.value.trim() : '';
     const email    = regEmail.value.trim();
     const password = regPassword.value;
     const confirm  = regPasswordConfirm.value;
 
-    // 입력값 검증
-    if (!nickname || !email || !password || !confirm) {
-        showAuthError('모든 항목을 입력해주세요.');
+    if (!email || !password || !confirm) {
+        showAuthError('이메일과 비밀번호 항목을 입력해주세요.');
         return;
     }
     if (password.length < 6) {
@@ -242,15 +360,16 @@ registerForm?.addEventListener('submit', async (e) => {
                 showAuthError(`❌ 회원가입 오류: ${error.message}`);
             }
         } else if (data.user) {
-            // profiles 테이블에 닉네임 및 사용자 정보 저장
-            try {
-                await supabaseClient.from('profiles').insert([{
-                    id: data.user.id,
-                    email: email,
-                    nickname: nickname
-                }]);
-            } catch (pErr) {
-                console.warn('프로필 저장 중 오류 (테이블 미생성 시):', pErr);
+            if (nickname) {
+                try {
+                    await supabaseClient.from('profiles').insert([{
+                        id: data.user.id,
+                        email: email,
+                        nickname: nickname
+                    }]);
+                } catch (pErr) {
+                    console.warn('프로필 저장 중 오류:', pErr);
+                }
             }
 
             if (data.session) {
@@ -274,10 +393,10 @@ logoutBtn?.addEventListener('click', async () => {
 
     await supabaseClient.auth.signOut();
     currentUser = null;
-    cabinet = []; // 보관함 데이터 초기화
+    currentNickname = '사용자';
+    cabinet = [];
     renderCabinet();
 
-    // 🧹 대화 내역(Chat History) 초기화 및 첫 안내 말풍선만 남기기
     if (chatHistory) {
         chatHistory.innerHTML = `
             <div class="message-bubble ai-bubble">
@@ -299,17 +418,14 @@ logoutBtn?.addEventListener('click', async () => {
             </div>`;
     }
 
-    // 🧹 JSON 구조 패널도 초기 상태로 리셋
     if (jsonOutput) {
         jsonOutput.textContent = `{\n  "status": "ready",\n  "message": "API 키를 설정하고 약품명을 입력하면 진짜 AI가 분석합니다."\n}`;
     }
 
-    // 메인 앱 숨기고 로그인 화면 표시
     mainApp.classList.add('hidden');
     authScreen.classList.remove('hidden');
     clearAuthMessages();
 
-    // 로그인 폼 초기화
     if (loginEmail) loginEmail.value = '';
     if (loginPassword) loginPassword.value = '';
     authTabLogin?.click();
@@ -317,7 +433,7 @@ logoutBtn?.addEventListener('click', async () => {
     console.log('🚪 로그아웃 완료 및 대화 내역 초기화 완료');
 });
 
-// 🔄 앱 시작 시: 브라우저/앱을 다시 켰을 때는 자동 로그인을 하지 않고 무조건 로그인 화면을 보여줍니다.
+// 🔄 앱 시작 시: 브라우저/앱 접속 시 세션 초기화
 async function checkExistingSession() {
     if (!supabaseClient) {
         authScreen.classList.add('hidden');
@@ -326,32 +442,26 @@ async function checkExistingSession() {
     }
 
     try {
-        // 기존 세션이 있다면 세션을 정리(로그아웃)하여 다음 접속 시 무조건 로그인을 거치도록 함
         await supabaseClient.auth.signOut();
     } catch (err) {
         console.warn('초기 세션 리셋:', err.message);
     }
 }
 
-// 앱 시작!
 checkExistingSession();
 
 // ──────────────────────────────────────────────────────────
 //  2. Gemini API 키 상태 관리
 // ──────────────────────────────────────────────────────────
-// LocalStorage에서 저장된 API 키를 불러옵니다.
 let GEMINI_API_KEY = localStorage.getItem('gemini_api_key') || '';
 
-// 초기 로드 시 API 키 상태 표시
 if (GEMINI_API_KEY) {
     updateApiKeyStatus(true);
     apiKeyInput.value = GEMINI_API_KEY;
 }
 
-// API 키 저장 버튼 클릭 이벤트
 saveApiKeyBtn?.addEventListener('click', () => {
     const key = apiKeyInput ? apiKeyInput.value.trim() : '';
-    // API 키 최소 길이만 확인 (형식 제한 없음 - 다양한 형태의 키 허용)
     if (key.length < 6) {
         alert('API 키가 너무 짧습니다. 올바른 Gemini API 키를 입력해주세요.');
         return;
@@ -362,7 +472,6 @@ saveApiKeyBtn?.addEventListener('click', () => {
     alert('✅ API 키가 성공적으로 저장되었습니다! 이제 실제 Gemini AI가 약 성분을 분석해 드립니다.');
 });
 
-// API 키 상태 표시 업데이트 함수
 function updateApiKeyStatus(isSet) {
     if (isSet) {
         apiKeyStatusEl.textContent = '연결됨 ✅';
@@ -376,32 +485,23 @@ function updateApiKeyStatus(isSet) {
 }
 
 // ──────────────────────────────────────────────────────────
-//  3. 내 약물 보관함 (Cabinet) - LocalStorage 연동
+//  3. 내 약물 보관함 (Cabinet)
 // ──────────────────────────────────────────────────────────
-// 보관함 데이터: 로그인 후 Supabase에서 불러오므로 초기값은 빈 배열
 let cabinet = [];
-
 let selectedImageFile = null;
 renderCabinet();
 
 // ──────────────────────────────────────────────────────────
 //  4. Gemini AI API 호출 핵심 함수
-//  - 실제로 Google Gemini 1.5 Flash 모델에 요청을 보내서
-//    진짜 약 성분/용법/상호작용 위험 정보를 받아오는 함수입니다.
 // ──────────────────────────────────────────────────────────
 async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
     const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-    // 이 API 키로 실제 사용 가능한 모델 목록을 자동 조회합니다.
-    // 모델을 하드코딩하지 않고 API 키마다 지원 모델이 다를 수 있으므로
-    // 실제로 사용할 수 있는 모델을 동적으로 가져옵니다.
     let MODELS = [];
     try {
         const listRes = await fetch(`${BASE_URL}?key=${GEMINI_API_KEY}`);
         if (listRes.ok) {
             const listData = await listRes.json();
-            // generateContent를 지원하며 이름에 'gemini'가 포함된 모델만 필터링
-            // gemini-2.5는 신규 사용자 사용 불가이므로 제외, experimental 제외
             MODELS = (listData.models || [])
                 .filter(m =>
                     m.supportedGenerationMethods?.includes('generateContent') &&
@@ -411,7 +511,6 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
                     !m.name.includes('preview')
                 )
                 .map(m => m.name.replace('models/', ''))
-                // flash 계열 먼저, 숫자 낮은 버전(더 안정적) 우선 정렬
                 .sort((a, b) => {
                     const aFlash = a.includes('flash') ? 0 : 1;
                     const bFlash = b.includes('flash') ? 0 : 1;
@@ -423,18 +522,15 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
         console.warn('모델 목록 조회 실패, 기본 모델 목록 사용');
     }
 
-    // 조회 실패 시 폴백 기본 목록
     if (MODELS.length === 0) {
         MODELS = ['gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-pro'];
     }
     console.log('[사용 가능한 모델]', MODELS);
 
-    // 보관함 선택 약물 목록을 텍스트로 구성
     const cabinetText = cabinetItems.length > 0
         ? `\n\n[내 약물 보관함 - 현재 복용 중인 약물 목록]:\n${cabinetItems.map((x, i) => `${i + 1}. ${x.name} (${x.type})`).join('\n')}`
         : '\n\n[내 약물 보관함]: 비어 있음';
 
-    // Gemini에게 역할 및 출력 형식을 정확히 지정하는 '시스템 지시문' 입니다.
     const systemPrompt = `당신은 한국의 의약품 및 건강기능식품(영양제) 전문 AI 성분 분석 어시스턴트입니다.
 사용자가 약품명, 영양제명, 또는 성분표를 여러 개 언급하거나 질문하면 다음을 수행하세요:
 
@@ -487,10 +583,8 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
   "user_summary": "질문된 모든 약물들에 대한 종합 3~4줄 한국어 요약"
 }`;
 
-    // 실제 Gemini API에 보낼 메시지 내용 구성 (텍스트 + 이미지)
     const parts = [];
 
-    // 이미지가 첨부된 경우 이미지 데이터 추가
     if (imageBase64) {
         parts.push({
             inlineData: {
@@ -500,7 +594,6 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
         });
     }
 
-    // 텍스트 질문 + 보관함 정보 합쳐서 추가
     parts.push({ text: systemPrompt + cabinetText + '\n\n[사용자 질문]: ' + userMessage });
 
     const requestBody = {
@@ -508,12 +601,11 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
             parts: parts
         }],
         generationConfig: {
-            temperature: 0.1,   // 낮은 온도 = 더 정확하고 일관된 의학적 응답
+            temperature: 0.1,
             maxOutputTokens: 1024
         }
     };
 
-    // 모델을 순서대로 시도하며, 할당량 초과 시 다음 모델로 자동 전환합니다.
     let lastError = null;
     for (const model of MODELS) {
         const GEMINI_URL = `${BASE_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`;
@@ -527,7 +619,6 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
             if (!response.ok) {
                 const errData = await response.json();
                 const errMsg = errData.error?.message || '';
-                // quota 초과, 모델 없음, 사용 불가, 권한 없음 오류 시 다음 모델로 자동 전환
                 const isSkippable = 
                     response.status === 429 ||
                     errMsg.toLowerCase().includes('quota') ||
@@ -540,7 +631,7 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
                 if (isSkippable) {
                     console.warn(`[모델 건너뜀] ${model} 사용 불가 → 다음 모델 시도 중...`, errMsg.substring(0, 80));
                     lastError = new Error(`${model}: ${errMsg}`);
-                    continue; // 다음 모델로 이동
+                    continue;
                 }
                 throw new Error(errMsg || `API 오류 (코드: ${response.status})`);
             }
@@ -554,25 +645,20 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
             const msg = err.message?.toLowerCase() || '';
             if (msg.includes('quota') || msg.includes('not found') || msg.includes('not supported')) {
                 lastError = err;
-                continue; // 다음 모델로 이동
+                continue;
             }
-            throw err; // 다른 종류의 오류는 즉시 상위로 전달
+            throw err;
         }
     }
 
-    // 모든 모델 시도 실패 시
     const lastMsg = lastError?.message || '알 수 없는 오류';
     throw new Error(`사용 가능한 Gemini 모델을 찾지 못했습니다.\n\n상세 오류: ${lastMsg.substring(0, 120)}\n\n💡 확인사항:\n1. API 키가 올바른지 다시 확인해주세요.\n2. Google AI Studio(aistudio.google.com)에서 API 키 상태를 확인해주세요.\n3. 잠시 후 다시 시도해주세요.`);
 }
 
 // ──────────────────────────────────────────────────────────
-//  5. 보관함 UI 렌더링 함수
-// ──────────────────────────────────────────────────────────
-// ──────────────────────────────────────────────────────────
 //  5. 보관함 UI 렌더링 & Supabase DB 연동 함수
 // ──────────────────────────────────────────────────────────
 
-// Supabase DB에서 약물 목록 가져오기
 async function fetchMedicinesFromSupabase() {
     if (!supabaseClient) return;
     try {
@@ -580,7 +666,6 @@ async function fetchMedicinesFromSupabase() {
             .from('medicines')
             .select('*')
             .order('id', { ascending: false });
-            // ✅ RLS 정책 덕분에 자동으로 현재 로그인된 사용자의 데이터만 반환됩니다!
 
         if (error) {
             console.error('Supabase 조회 오류:', error.message);
@@ -588,7 +673,6 @@ async function fetchMedicinesFromSupabase() {
         }
 
         if (data && data.length > 0) {
-            // DB 데이터가 있으면 로컬 cabinet 배열 업데이트
             cabinet = data.map(item => ({
                 id: item.id,
                 name: item.name,
@@ -608,18 +692,15 @@ async function fetchMedicinesFromSupabase() {
     }
 }
 
-// Supabase DB에 약물 새로 추가하기
 async function addMedicineToSupabase(name, type = '의약품', ingredients = '') {
     if (!name.trim()) return;
 
-    // 로컬 즉시 추가
     const newItem = { id: Date.now(), name, type, ingredients, selected: true };
     cabinet.unshift(newItem);
     renderCabinet();
 
     if (supabaseClient && currentUser) {
         try {
-            // user_id를 함께 저장하여 로그인한 사용자의 데이터임을 표시합니다.
             const { data, error } = await supabaseClient
                 .from('medicines')
                 .insert([{ name, type, ingredients, selected: true, user_id: currentUser.id }])
@@ -638,9 +719,7 @@ async function addMedicineToSupabase(name, type = '의약품', ingredients = '')
     }
 }
 
-// Supabase DB에서 약물 삭제하기
 async function deleteMedicineFromSupabase(id) {
-    // 로컬 제거
     cabinet = cabinet.filter(x => String(x.id) !== String(id));
     renderCabinet();
 
@@ -662,7 +741,6 @@ async function deleteMedicineFromSupabase(id) {
     }
 }
 
-// 메인 화면 보관함 리스트 렌더링
 function renderCabinet() {
     cabinetCountEl.textContent = cabinet.length;
     localStorage.setItem('my_medicine_cabinet', JSON.stringify(cabinet));
@@ -702,10 +780,9 @@ function renderCabinet() {
     });
 }
 
-// 메인 화면 [선택 해제 / 전체 비우기] 클릭 시: 체크박스만 해제 (DB 데이터는 삭제되지 않음!)
-clearCabinetBtn.addEventListener('click', () => {
+clearCabinetBtn?.addEventListener('click', () => {
     if (cabinet.length === 0) return;
-    if (confirm('현재 대 대조할 약물 선택을 모두 해제하시겠습니까?\n(💡 Supabase DB의 약물 데이터는 삭제되지 않고 안전하게 보관됩니다.)')) {
+    if (confirm('현재 대조할 약물 선택을 모두 해제하시겠습니까?\n(💡 Supabase DB의 약물 데이터는 삭제되지 않고 안전하게 보관됩니다.)')) {
         cabinet.forEach(x => x.selected = false);
         renderCabinet();
     }
@@ -720,7 +797,6 @@ const tabBtnCabinet = document.getElementById('tab-btn-cabinet');
 const viewChatbot       = document.getElementById('view-chatbot');
 const viewCabinetManage = document.getElementById('view-cabinet-manage');
 
-// 챗봇 탭 클릭 시
 tabBtnChat?.addEventListener('click', () => {
     tabBtnChat.classList.add('active');
     tabBtnCabinet.classList.remove('active');
@@ -732,7 +808,6 @@ tabBtnChat?.addEventListener('click', () => {
     viewCabinetManage.classList.remove('active-view');
 });
 
-// 약물 보관함 관리 탭 클릭 시 (화면 전환!)
 tabBtnCabinet?.addEventListener('click', () => {
     tabBtnCabinet.classList.add('active');
     tabBtnChat.classList.remove('active');
@@ -743,7 +818,6 @@ tabBtnCabinet?.addEventListener('click', () => {
     viewChatbot.classList.add('hidden-view');
     viewChatbot.classList.remove('active-view');
 
-    // Supabase 최신 데이터 불러오기
     fetchMedicinesFromSupabase();
 });
 
@@ -758,7 +832,6 @@ const refreshDbBtn = document.getElementById('refresh-db-btn');
 
 refreshDbBtn?.addEventListener('click', fetchMedicinesFromSupabase);
 
-// 신규 약물 추가 버튼
 addMedDbBtn?.addEventListener('click', async () => {
     const name = newMedNameInput.value.trim();
     const type = newMedTypeSelect.value;
@@ -775,7 +848,6 @@ addMedDbBtn?.addEventListener('click', async () => {
     alert(`✅ '${name}' 제품이 Supabase DB 보관함에 추가되었습니다!`);
 });
 
-// 관리 모달 내부 DB 목록 렌더링
 function renderDbMedicineList(items) {
     if (!dbMedListEl) return;
     dbMedCountEl.textContent = items.length;
@@ -796,7 +868,6 @@ function renderDbMedicineList(items) {
     `).join('');
 }
 
-// 글로벌 삭제 확정 함수
 window.confirmDeleteDbItem = async function(id, name) {
     if (confirm(`정말로 Supabase DB에서 '${name}' 약물을 영구 삭제하시겠습니까?`)) {
         await deleteMedicineFromSupabase(id);
@@ -804,7 +875,6 @@ window.confirmDeleteDbItem = async function(id, name) {
     }
 };
 
-// 초기화 시 Supabase에서 약물 불러오기
 fetchMedicinesFromSupabase();
 
 // ──────────────────────────────────────────────────────────
@@ -830,10 +900,9 @@ removeImgBtn?.addEventListener('click', () => {
 });
 
 // ──────────────────────────────────────────────────────────
-//  7. 전역 버튼 클릭 이벤트 (모든 버튼 클릭 동작 100% 활성화 보장)
+//  7. 전역 버튼 클릭 이벤트 (비밀번호 토글, 칩 버튼)
 // ──────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
-    // 1) 비밀번호 보기/숨기기(👁️) 토글 버튼 클릭 시
     const pwToggleBtn = e.target.closest('.pw-toggle-btn');
     if (pwToggleBtn) {
         const targetId = pwToggleBtn.getAttribute('data-target');
@@ -841,16 +910,15 @@ document.addEventListener('click', (e) => {
         if (inputEl) {
             if (inputEl.type === 'password') {
                 inputEl.type = 'text';
-                pwToggleBtn.textContent = '🙈'; // 보이는 상태일 때 아이콘 변경
+                pwToggleBtn.textContent = '🙈';
             } else {
                 inputEl.type = 'password';
-                pwToggleBtn.textContent = '👁️'; // 숨겨진 상태일 때 아이콘 변경
+                pwToggleBtn.textContent = '👁️';
             }
         }
         return;
     }
 
-    // 2) 칩 버튼 클릭 시
     const chipBtn = e.target.closest('.chip-btn');
     if (chipBtn) {
         const query = chipBtn.getAttribute('data-query');
@@ -890,16 +958,13 @@ async function handleSendMessage() {
         let analysisResult;
 
         if (!GEMINI_API_KEY) {
-            // API 키가 없으면 로컬 지식베이스로 응답
             analysisResult = localKnowledgeBase(userText, selectedCabinetItems);
             await new Promise(r => setTimeout(r, 600));
         } else {
-            // 이미지 파일을 base64로 변환 (사진 첨부 시)
             let imageBase64 = null;
             if (capturedImageFile) {
                 imageBase64 = await fileToBase64(capturedImageFile);
             }
-            // 실제 Gemini AI 호출
             analysisResult = await callGeminiAPI(userText, selectedCabinetItems, imageBase64);
         }
 
@@ -915,29 +980,21 @@ async function handleSendMessage() {
     scrollToBottom();
 }
 
-// ──────────────────────────────────────────────────────────
-//  9. 이미지 → base64 변환 (사진을 API에 전송 가능한 형태로 변환)
-// ──────────────────────────────────────────────────────────
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]); // "data:image/xxx;base64," 이후 데이터만 추출
+        reader.onload = () => resolve(reader.result.split(',')[1]);
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
 }
 
-// ──────────────────────────────────────────────────────────
-//  10. 로컬 약품 지식베이스 (API 키 없을 때 폴백용)
-//  - 한국 대표 약품/영양제의 실제 성분 데이터가 들어 있습니다.
-// ──────────────────────────────────────────────────────────
 function localKnowledgeBase(userText, cabinetItems) {
     const text = userText.toLowerCase();
     const cabinetNames = cabinetItems.map(x => x.name.toLowerCase()).join(' ');
 
     const foundProducts = [];
 
-    // 타이레놀
     if (text.includes('타이레놀') || text.includes('아세트아미노펜')) {
         foundProducts.push({
             product_name: '타이레놀 500mg',
@@ -947,7 +1004,6 @@ function localKnowledgeBase(userText, cabinetItems) {
         });
     }
 
-    // 우루사
     if (text.includes('우루사')) {
         foundProducts.push({
             product_name: '우루사 100mg',
@@ -960,7 +1016,6 @@ function localKnowledgeBase(userText, cabinetItems) {
         });
     }
 
-    // 게보린
     if (text.includes('게보린')) {
         foundProducts.push({
             product_name: '게보린정',
@@ -974,7 +1029,6 @@ function localKnowledgeBase(userText, cabinetItems) {
         });
     }
 
-    // 임팩타민
     if (text.includes('임팩타민')) {
         foundProducts.push({
             product_name: '임팩타민 파워',
@@ -989,7 +1043,6 @@ function localKnowledgeBase(userText, cabinetItems) {
         });
     }
 
-    // 오메가3
     if (text.includes('오메가3') || text.includes('오메가-3')) {
         foundProducts.push({
             product_name: '오메가3 EPA/DHA',
@@ -1002,7 +1055,6 @@ function localKnowledgeBase(userText, cabinetItems) {
         });
     }
 
-    // 감지된 약물이 있는 경우
     if (foundProducts.length > 0) {
         const productNames = foundProducts.map(p => p.product_name).join(', ');
         const hasAspirin = cabinetNames.includes('아스피린') || cabinetNames.includes('와파린');
@@ -1023,7 +1075,6 @@ function localKnowledgeBase(userText, cabinetItems) {
         };
     }
 
-    // 알 수 없는 약품 - 일반 응답
     return {
         products: [{
             product_name: userText.substring(0, 40),
@@ -1092,7 +1143,6 @@ function appendAiResponseMessage(res) {
             </div>`;
     }
 
-    // 단일 제품 구조(기존) or 다중 제품 배열 구조 호환 처리
     let productList = [];
     if (res.products && Array.isArray(res.products) && res.products.length > 0) {
         productList = res.products;
@@ -1105,7 +1155,6 @@ function appendAiResponseMessage(res) {
         }];
     }
 
-    // 언급된 여러 약물 각각을 개별 카드 뷰로 렌더링
     const productsHtml = productList.map((prod, idx) => {
         const prodName = prod.product_name || `제품 ${idx + 1}`;
         const prodType = prod.type || '분류 미지정';
@@ -1157,9 +1206,6 @@ function appendAiResponseMessage(res) {
     scrollToBottom();
 }
 
-// ──────────────────────────────────────────────────────────
-//  12. 보관함 저장 글로벌 함수
-// ──────────────────────────────────────────────────────────
 window.saveToCabinet = async function(name, type) {
     if (cabinet.some(x => x.name === name)) {
         alert('이미 보관함에 저장되어 있는 제품입니다.');
@@ -1169,10 +1215,7 @@ window.saveToCabinet = async function(name, type) {
     alert(`✅ '${name}' 제품이 Supabase DB 및 내 약물 보관함에 저장되었습니다!`);
 };
 
-// ──────────────────────────────────────────────────────────
-//  13. JSON 복사 및 HTML 이스케이프 유틸리티
-// ──────────────────────────────────────────────────────────
-copyJsonBtn.addEventListener('click', () => {
+copyJsonBtn?.addEventListener('click', () => {
     navigator.clipboard.writeText(jsonOutput.textContent).then(() => {
         copyJsonBtn.textContent = '복사 완료! ✅';
         setTimeout(() => { copyJsonBtn.textContent = 'JSON 복사'; }, 2000);
@@ -1183,4 +1226,4 @@ function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
-console.log('✅ 실제 Gemini AI 연동 약물 분석 어시스턴트 준비 완료');
+console.log('✅ 실제 Gemini AI 연동 약물 분석 어시스턴트 및 인앱 닉네임 설정 준비 완료');
