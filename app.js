@@ -82,8 +82,15 @@ renderCabinet();
 //    진짜 약 성분/용법/상호작용 위험 정보를 받아오는 함수입니다.
 // ──────────────────────────────────────────────────────────
 async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
-    // Gemini 2.0 Flash 엔드포인트 (최신 버전, aq 포함 모든 형식의 키 호환)
-    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // 무료 한도가 있는 순서대로 모델을 시도합니다.
+    // gemini-1.5-flash → gemini-1.5-flash-8b → gemini-1.0-pro 순서로 자동 폴백
+    const MODELS = [
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b',
+        'gemini-1.5-flash-latest',
+    ];
+
+    const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
     // 보관함 선택 약물 목록을 텍스트로 구성
     const cabinetText = cabinetItems.length > 0
@@ -146,24 +153,45 @@ async function callGeminiAPI(userMessage, cabinetItems, imageBase64 = null) {
         }
     };
 
-    // 실제 API 호출 (fetch 함수로 인터넷 통신)
-    const response = await fetch(GEMINI_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-    });
+    // 모델을 순서대로 시도하며, 할당량 초과 시 다음 모델로 자동 전환합니다.
+    let lastError = null;
+    for (const model of MODELS) {
+        const GEMINI_URL = `${BASE_URL}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+        try {
+            const response = await fetch(GEMINI_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
 
-    if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error?.message || `API 오류 (코드: ${response.status})`);
+            if (!response.ok) {
+                const errData = await response.json();
+                const errMsg = errData.error?.message || '';
+                // 할당량 초과(429) 또는 quota 오류 시 다음 모델로 자동 전환
+                if (response.status === 429 || errMsg.includes('quota') || errMsg.includes('Quota')) {
+                    console.warn(`[모델 전환] ${model} 한도 초과 → 다음 모델 시도 중...`);
+                    lastError = new Error(`${model}: ${errMsg}`);
+                    continue; // 다음 모델로 이동
+                }
+                throw new Error(errMsg || `API 오류 (코드: ${response.status})`);
+            }
+
+            const data = await response.json();
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const cleanedText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            return JSON.parse(cleanedText);
+
+        } catch (err) {
+            if (err.message?.includes('quota') || err.message?.includes('Quota')) {
+                lastError = err;
+                continue; // 다음 모델로 이동
+            }
+            throw err; // 다른 종류의 오류는 즉시 상위로 전달
+        }
     }
 
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // JSON 코드 블록 마크다운 제거 후 파싱
-    const cleanedText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    return JSON.parse(cleanedText);
+    // 모든 모델 시도 실패 시
+    throw new Error('모든 Gemini 모델의 무료 사용 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.\n\n💡 팁: Google AI Studio에서 유료 플랜을 사용하거나, 몇 분 후 다시 시도해보세요.');
 }
 
 // ──────────────────────────────────────────────────────────
