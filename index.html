@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Studio 헬스케어 어시스턴트 | 남건</title>
+    <title>AI Studio 헬스케어 어시스턴트 & 내 보관함 | 남건</title>
     
     <!-- 구글 폰트 (Inter) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +22,7 @@
         <header class="studio-navbar">
             <div class="brand">
                 <span class="sparkle-icon">✨</span>
-                <span class="brand-title">Healthcare AI Assistant</span>
+                <span class="brand-title">Healthcare AI Cabinet Assistant</span>
                 <span class="version-tag">Gemini Powered</span>
             </div>
             <div class="nav-actions">
@@ -41,16 +41,17 @@
                     <div class="message-bubble ai-bubble">
                         <div class="avatar">✨</div>
                         <div class="bubble-content">
-                            <h3>안녕하세요 남건! 약 & 영양제 상호작용 분석 어시스턴트입니다. 👋</h3>
-                            <p>궁금하신 <strong>약품명, 영양제 성분표 사진/텍스트</strong>를 아래 입력창에 남겨주시면, 기존 복용약과의 상호작용 위험(중복 섭취, 약효 저해, 흡수 방해)을 실시간으로 분석해 드립니다.</p>
+                            <h3>안녕하세요 남건! 약 & 영양제 보관함 AI 어시스턴트입니다. 👋</h3>
+                            <p>궁금하신 약/영양제의 <strong>사진이나 텍스트</strong>를 전송하시면 AI가 성분을 분석해 드립니다.</p>
+                            <p style="margin-top: 0.4rem; color: #38bdf8;">💡 분석 후 <strong>[내 보관함에 저장]</strong>해 두시면, 나중에 챗봇과 대화할 때 보관함에서 선택한 약들과 <strong>자동 대조 분석</strong>을 수행합니다!</p>
                             
                             <!-- 빠른 테스트 샘플 칩 뱃지들 -->
                             <div class="sample-chips">
-                                <span class="chip-label">⚡ 빠른 테스트 샘플 선택:</span>
-                                <button class="chip-btn" data-key="vitamin_d">🚨 비타민D 5000IU + 종합비타민</button>
-                                <button class="chip-btn" data-key="aspirin_vitk">🚨 아스피린 + 비타민K</button>
-                                <button class="chip-btn" data-key="thyroid_calcium">⚠️ 갑상선약 + 칼슘제</button>
-                                <button class="chip-btn" data-key="acne_vita">🚨 여드름약 + 비타민A</button>
+                                <span class="chip-label">⚡ 빠른 테스트 시나리오 선택:</span>
+                                <button class="chip-btn" data-key="vitamin_d">🚨 비타민D 5000IU 분석</button>
+                                <button class="chip-btn" data-key="aspirin_vitk">🚨 아스피린 분석</button>
+                                <button class="chip-btn" data-key="thyroid_calcium">⚠️ 갑상선약 분석</button>
+                                <button class="chip-btn" data-key="acne_vita">🚨 여드름약 분석</button>
                             </div>
                         </div>
                     </div>
@@ -60,28 +61,47 @@
                 <!-- 하단 AI 챗 입력 바 -->
                 <div class="chat-input-container">
                     <div class="input-box-wrapper">
-                        <textarea id="chat-input" placeholder="분석할 약이나 영양제 이름을 입력하거나 질문해 보세요... (예: 닥터비타 비타민D 5000IU)" rows="1"></textarea>
-                        <div class="input-actions">
-                            <button id="send-btn" class="send-btn" title="전송">
-                                <span>분석 실행</span>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            </button>
+                        <!-- 이미지 업로드 미니 미리보기 영역 -->
+                        <div id="image-preview-container" class="image-preview-container hidden">
+                            <span class="preview-badge">📷 업로드된 이미지: <span id="preview-filename">drug_photo.jpg</span></span>
+                            <button id="remove-img-btn" class="icon-btn-small">✕</button>
+                        </div>
+
+                        <textarea id="chat-input" placeholder="약/영양제 이름이나 질문을 입력하거나, 📷 사진을 첨부하세요..." rows="1"></textarea>
+                        
+                        <div class="input-toolbar">
+                            <div class="tool-left">
+                                <!-- 사진 첨부 숨겨진 file input -->
+                                <input type="file" id="image-upload" accept="image/*" class="hidden">
+                                <button id="photo-upload-btn" class="tool-btn" title="약/영양제 사진 첨부하기">
+                                    📷 <span>사진 첨부</span>
+                                </button>
+                            </div>
+                            <div class="tool-right">
+                                <button id="send-btn" class="send-btn" title="전송">
+                                    <span>AI 분석 및 대조</span>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <!-- 우측: 사이드바 파라미터 & JSON 제어 패널 (Assistant Panel) -->
+            <!-- 우측: 약물 보관함(Cabinet) & JSON 데이터 제어 패널 -->
             <aside class="sidebar-pane">
                 
-                <!-- 기존 복용약 제어 섹션 -->
-                <div class="sidebar-card">
+                <!-- 💊 내 약물/영양제 보관함 카테고리 -->
+                <div class="sidebar-card cabinet-card">
                     <div class="card-title">
-                        <span>💊 기존 복용 중인 약물/영양제</span>
+                        <span>💊 내 약물 보관함 (<span id="cabinet-count">0</span>개)</span>
+                        <button id="clear-cabinet-btn" class="secondary-btn-danger">전체 비우기</button>
                     </div>
-                    <div class="form-group">
-                        <input type="text" id="existing-meds" class="form-control" placeholder="예: 종합비타민, 오메가3, 아스피린" value="종합비타민 (비타민D 1000IU 포함)">
-                        <small class="help-text">💡 쉼표(,)로 구분하여 등록하세요.</small>
+                    <p class="cabinet-help">체크박스를 선택한 약물들이 챗봇 대화 시 자동 대조 대상이 됩니다.</p>
+                    
+                    <!-- 보관함 리스트 (동적 생성) -->
+                    <div id="cabinet-list" class="cabinet-list">
+                        <!-- JS로 보관함 항목 렌더링 -->
                     </div>
                 </div>
 
@@ -93,7 +113,7 @@
                     </div>
                     <pre><code id="json-output">{
   "status": "ready",
-  "message": "약이나 영양제를 입력하면 JSON 데이터가 여기에 출력됩니다."
+  "message": "약품을 분석하거나 대조하면 JSON 데이터가 여기에 업데이트됩니다."
 }</code></pre>
                 </div>
 
