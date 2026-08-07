@@ -507,3 +507,85 @@ code {
 .badge-warning { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
 
 .hidden { display: none !important; }
+
+/* API Key 설정 카드 스타일 */
+.api-key-card {
+    border-color: rgba(56, 189, 248, 0.2);
+}
+
+.api-key-input-group {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.save-api-btn {
+    background: linear-gradient(135deg, #0891b2, #0369a1);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.2s;
+}
+
+.save-api-btn:hover {
+    transform: scale(1.04);
+}
+
+.api-link {
+    font-size: 0.73rem;
+    color: #38bdf8;
+    text-decoration: none;
+    display: block;
+    margin-top: 0.1rem;
+}
+
+.api-link:hover {
+    text-decoration: underline;
+}
+
+.api-status-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.tag-unset {
+    background: rgba(107, 114, 128, 0.2);
+    color: #9ca3af;
+    border: 1px solid #374151;
+}
+
+.tag-set {
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    border: 1px solid #34d399;
+}
+
+/* AI 상태 인디케이터 dot 색상 변형 */
+.dot-gray {
+    background-color: #6b7280 !important;
+    box-shadow: none !important;
+}
+
+.dot-green {
+    background-color: #34d399;
+    box-shadow: 0 0 8px #34d399;
+}
+
+/* AI 응답 중 로딩 애니메이션 */
+.loading-dots::after {
+    content: '';
+    animation: dots 1.2s steps(3, end) infinite;
+}
+
+@keyframes dots {
+    0% { content: ''; }
+    33% { content: '.'; }
+    66% { content: '..'; }
+    100% { content: '...'; }
+}

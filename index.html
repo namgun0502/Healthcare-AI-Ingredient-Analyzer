@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Studio 헬스케어 어시스턴트 & 내 보관함 | 남건</title>
+    <title>진짜 AI 약 & 영양제 분석 어시스턴트 | 남건</title>
     
     <!-- 구글 폰트 (Inter) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,11 +22,11 @@
         <header class="studio-navbar">
             <div class="brand">
                 <span class="sparkle-icon">✨</span>
-                <span class="brand-title">Healthcare AI Cabinet Assistant</span>
-                <span class="version-tag">Gemini Powered</span>
+                <span class="brand-title">Healthcare AI Assistant</span>
+                <span class="version-tag">Gemini 1.5 Flash</span>
             </div>
             <div class="nav-actions">
-                <span class="status-indicator"><span class="dot"></span> Online</span>
+                <span id="ai-status" class="status-indicator"><span class="dot dot-gray"></span> API 키 미설정</span>
             </div>
         </header>
 
@@ -41,17 +41,18 @@
                     <div class="message-bubble ai-bubble">
                         <div class="avatar">✨</div>
                         <div class="bubble-content">
-                            <h3>안녕하세요 남건! 약 & 영양제 보관함 AI 어시스턴트입니다. 👋</h3>
-                            <p>궁금하신 약/영양제의 <strong>사진이나 텍스트</strong>를 전송하시면 AI가 성분을 분석해 드립니다.</p>
-                            <p style="margin-top: 0.4rem; color: #38bdf8;">💡 분석 후 <strong>[내 보관함에 저장]</strong>해 두시면, 나중에 챗봇과 대화할 때 보관함에서 선택한 약들과 <strong>자동 대조 분석</strong>을 수행합니다!</p>
+                            <h3>안녕하세요 남건! 실제 약 성분 AI 분석 어시스턴트입니다. 💊</h3>
+                            <p>타이레놀, 우루사, 게보린, 오메가3 같은 <strong>실제 약/영양제 이름</strong>을 입력하시면 Gemini AI가 진짜 성분, 효능, 상호작용 위험을 실시간으로 분석해 드립니다!</p>
+                            <p style="margin-top: 0.4rem; color: #38bdf8;">💡 우측 패널에 <strong>Gemini API 키</strong>를 등록하면 실제 AI가 응답합니다. 분석 후 [보관함에 저장]하면 다음에도 자동 대조 분석이 가능합니다.</p>
                             
-                            <!-- 빠른 테스트 샘플 칩 뱃지들 -->
+                            <!-- 실제 약품명 빠른 입력 칩 -->
                             <div class="sample-chips">
-                                <span class="chip-label">⚡ 빠른 테스트 시나리오 선택:</span>
-                                <button class="chip-btn" data-key="vitamin_d">🚨 비타민D 5000IU 분석</button>
-                                <button class="chip-btn" data-key="aspirin_vitk">🚨 아스피린 분석</button>
-                                <button class="chip-btn" data-key="thyroid_calcium">⚠️ 갑상선약 분석</button>
-                                <button class="chip-btn" data-key="acne_vita">🚨 여드름약 분석</button>
+                                <span class="chip-label">💊 실제 약/영양제 이름으로 바로 질문해보기:</span>
+                                <button class="chip-btn" data-query="타이레놀 500mg 성분과 복용법을 알려주고, 내 보관함 약물들과 함께 먹어도 되는지 대조 분석해줘">💊 타이레놀</button>
+                                <button class="chip-btn" data-query="우루사 성분과 효능을 알려주고 보관함 약들과의 상호작용을 분석해줘">🟡 우루사</button>
+                                <button class="chip-btn" data-query="게보린 성분과 주의사항, 보관함 약들과의 중복 위험을 분석해줘">💊 게보린</button>
+                                <button class="chip-btn" data-query="임팩타민 성분과 하루 권장 섭취량, 보관함 약물들과의 상호작용 위험을 알려줘">🔶 임팩타민</button>
+                                <button class="chip-btn" data-query="오메가3 주요 성분과 효능, 보관함에 있는 약들과 같이 먹어도 되는지 분석해줘">🐟 오메가3</button>
                             </div>
                         </div>
                     </div>
@@ -67,7 +68,7 @@
                             <button id="remove-img-btn" class="icon-btn-small">✕</button>
                         </div>
 
-                        <textarea id="chat-input" placeholder="약/영양제 이름이나 질문을 입력하거나, 📷 사진을 첨부하세요..." rows="1"></textarea>
+                        <textarea id="chat-input" placeholder="예: 타이레놀 먹는데 오메가3랑 같이 먹어도 돼? / 우루사 성분이 뭐야?" rows="1"></textarea>
                         
                         <div class="input-toolbar">
                             <div class="tool-left">
@@ -88,8 +89,22 @@
                 </div>
             </main>
 
-            <!-- 우측: 약물 보관함(Cabinet) & JSON 데이터 제어 패널 -->
+            <!-- 우측: API 설정 + 약물 보관함(Cabinet) & JSON 데이터 제어 패널 -->
             <aside class="sidebar-pane">
+
+                <!-- 🔑 Gemini API 키 설정 카드 -->
+                <div class="sidebar-card api-key-card">
+                    <div class="card-title">
+                        <span>🔑 Gemini API 키 설정</span>
+                        <span id="api-key-status" class="api-status-tag tag-unset">미설정</span>
+                    </div>
+                    <p class="cabinet-help">Google AI Studio에서 무료로 발급받은 API 키를 입력하면 실제 Gemini AI가 분석합니다.</p>
+                    <div class="api-key-input-group">
+                        <input type="password" id="api-key-input" class="form-control" placeholder="AIza로 시작하는 API 키 입력...">
+                        <button id="save-api-key-btn" class="save-api-btn">저장</button>
+                    </div>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">🔗 API 키 무료 발급받기 (Google AI Studio)</a>
+                </div>
                 
                 <!-- 💊 내 약물/영양제 보관함 카테고리 -->
                 <div class="sidebar-card cabinet-card">
@@ -97,7 +112,7 @@
                         <span>💊 내 약물 보관함 (<span id="cabinet-count">0</span>개)</span>
                         <button id="clear-cabinet-btn" class="secondary-btn-danger">전체 비우기</button>
                     </div>
-                    <p class="cabinet-help">체크박스를 선택한 약물들이 챗봇 대화 시 자동 대조 대상이 됩니다.</p>
+                    <p class="cabinet-help">체크박스를 선택한 약물들이 AI 대화 시 자동 대조 분석됩니다.</p>
                     
                     <!-- 보관함 리스트 (동적 생성) -->
                     <div id="cabinet-list" class="cabinet-list">
@@ -108,18 +123,18 @@
                 <!-- 표준 JSON 데이터 출력 패널 -->
                 <div class="sidebar-card json-sidebar-card">
                     <div class="card-title json-title">
-                        <span>📄 표준 JSON 구조 응답</span>
+                        <span>📄 AI 응답 JSON 구조</span>
                         <button id="copy-json-btn" class="secondary-btn">JSON 복사</button>
                     </div>
                     <pre><code id="json-output">{
   "status": "ready",
-  "message": "약품을 분석하거나 대조하면 JSON 데이터가 여기에 업데이트됩니다."
+  "message": "API 키를 설정하고 약품명을 입력하면 진짜 AI가 분석합니다."
 }</code></pre>
                 </div>
 
                 <!-- 면책 조항 -->
                 <div class="sidebar-card disclaimer-card">
-                    💡 <strong>의료 안전 안내:</strong> 본 AI 분석은 참고용 가이드이며 정확한 복용 및 상호작용은 의사 또는 약사와 상담하셔야 합니다.
+                    💡 <strong>의료 안전 안내:</strong> 본 AI 분석은 참고용 정보이며 정확한 복용 상담은 의사 또는 약사와 하셔야 합니다.
                 </div>
 
             </aside>
