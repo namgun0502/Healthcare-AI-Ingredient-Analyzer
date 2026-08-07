@@ -140,40 +140,57 @@ async function showMainApp(user) {
 
     let userNickname = '';
 
-    // Supabase profiles 테이블에서 사용자 닉네임 및 계정별 API 키 불러오기
+    // ① 닉네임 조회 — nickname 컬럼만 독립적으로 조회 (API 키 오류 영향 없음)
     if (supabaseClient && user) {
         try {
-            const { data, error } = await supabaseClient
+            const { data: profileData } = await supabaseClient
                 .from('profiles')
-                .select('nickname, gemini_api_key')
+                .select('nickname')
                 .eq('id', user.id)
                 .single();
 
-            if (data) {
-                if (data.nickname && data.nickname.trim() !== '') {
-                    userNickname = data.nickname.trim();
-                } else if (user.user_metadata && user.user_metadata.nickname && user.user_metadata.nickname.trim() !== '') {
-                    userNickname = user.user_metadata.nickname.trim();
-                }
-
-                // 🔑 계정에 저장된 Gemini API 키가 있는 경우 자동 로드 및 활성화
-                if (data.gemini_api_key && data.gemini_api_key.trim() !== '') {
-                    GEMINI_API_KEY = data.gemini_api_key.trim();
-                    localStorage.setItem('gemini_api_key', GEMINI_API_KEY);
-                    if (apiKeyInput) apiKeyInput.value = GEMINI_API_KEY;
-                    updateApiKeyStatus(true);
-                    console.log('🔑 계정(Supabase DB)에서 Gemini API 키 자동 동기화 완료!');
-                }
+            if (profileData && profileData.nickname && profileData.nickname.trim() !== '') {
+                userNickname = profileData.nickname.trim();
+            } else if (user.user_metadata?.nickname && user.user_metadata.nickname.trim() !== '') {
+                // Supabase auth 메타데이터에서도 닉네임 확인 (회원가입 시 저장한 경우)
+                userNickname = user.user_metadata.nickname.trim();
             }
         } catch (e) {
-            console.warn('프로필 정보 조회 실패:', e);
+            // 닉네임 조회 실패 시에도 앱은 정상 동작 (auth 메타데이터 시도)
+            if (user.user_metadata?.nickname && user.user_metadata.nickname.trim() !== '') {
+                userNickname = user.user_metadata.nickname.trim();
+            }
+            console.warn('닉네임 조회 실패 (auth 메타데이터 사용):', e.message);
         }
     }
 
+    // ② API 키 조회 — 완전히 분리된 try-catch로 독립 처리 (컬럼 없어도 닉네임에 영향 없음)
+    if (supabaseClient && user) {
+        try {
+            const { data: apiData } = await supabaseClient
+                .from('profiles')
+                .select('gemini_api_key')
+                .eq('id', user.id)
+                .single();
+
+            if (apiData?.gemini_api_key && apiData.gemini_api_key.trim() !== '') {
+                GEMINI_API_KEY = apiData.gemini_api_key.trim();
+                localStorage.setItem('gemini_api_key', GEMINI_API_KEY);
+                if (apiKeyInput) apiKeyInput.value = GEMINI_API_KEY;
+                updateApiKeyStatus(true);
+                console.log('🔑 계정(Supabase DB)에서 Gemini API 키 자동 동기화 완료!');
+            }
+        } catch (e) {
+            // gemini_api_key 컬럼이 아직 Supabase에 없어도 에러 무시 (LocalStorage 키 사용)
+            console.warn('API 키 조회 실패 (Supabase SQL 마이그레이션 006번 미실행 가능):', e.message);
+        }
+    }
+
+    // ③ 닉네임 설정 여부 판단 — 이미 닉네임이 있으면 모달 절대 열지 않음
     if (!userNickname || userNickname === '사용자') {
         currentNickname = '사용자';
         updateUserDisplayInfo('사용자', user.email);
-        
+        // 닉네임이 진짜 없는 경우에만 모달 오픈
         setTimeout(() => {
             openNicknameModal(true);
         }, 500);
